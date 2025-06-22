@@ -128,7 +128,7 @@ export default function DocumentManagement() {
           </p>
         </div>
         <div className="flex space-x-2">
-          <Link href="/document-management/compliance-tracker">
+          <Link to="/document-management/compliance-tracker">
             <Button variant="outline">
               <FileText className="h-4 w-4 mr-2" />
               Compliance Tracker

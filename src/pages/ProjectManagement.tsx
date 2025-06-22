@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -51,7 +52,7 @@ export default function ProjectManagement() {
             Manage and monitor all construction projects across different phases.
           </p>
         </div>
-        <Link href="/project-management/create">
+        <Link to="/project-management/create">
           <Button className="bg-accent hover:bg-accent/90">
             <Plus className="h-4 w-4 mr-2" />
             New Project
@@ -104,7 +105,7 @@ export default function ProjectManagement() {
                   </Badge>
                 </div>
                 <div className="flex space-x-1">
-                  <Link href={`/project-management/${project.id}`}>
+                  <Link to={`/project-management/${project.id}`}>
                     <Button variant="ghost" size="icon">
                       <Eye className="h-4 w-4" />
                     </Button>
