@@ -7,6 +7,10 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppLayout } from "@/components/layout/app-layout";
 import Dashboard from "@/pages/Dashboard";
 import ProjectManagement from "@/pages/ProjectManagement";
+import ProjectCreate from "@/pages/ProjectCreate";
+import ProjectDetail from "@/pages/ProjectDetail";
+import ProjectUpdates from "@/pages/ProjectUpdates";
+import ProjectUpdateDetail from "@/pages/ProjectUpdateDetail";
 import DocumentManagement from "@/pages/DocumentManagement";
 import ComplianceTracker from "@/pages/ComplianceTracker";
 import SafetyCompliance from "@/pages/SafetyCompliance";
@@ -25,11 +29,14 @@ const App = () => (
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/project-management" element={<ProjectManagement />} />
+            <Route path="/project-management/create" element={<ProjectCreate />} />
+            <Route path="/project-management/:id" element={<ProjectDetail />} />
+            <Route path="/project-updates" element={<ProjectUpdates />} />
+            <Route path="/project-updates/:updateId" element={<ProjectUpdateDetail />} />
             <Route path="/document-management" element={<DocumentManagement />} />
             <Route path="/document-management/compliance-tracker" element={<ComplianceTracker />} />
             <Route path="/safety-compliance" element={<SafetyCompliance />} />
             {/* Placeholder routes for other modules */}
-            <Route path="/project-updates" element={<div className="p-8 text-center text-muted-foreground">Project Updates - Coming Soon</div>} />
             <Route path="/tasks" element={<div className="p-8 text-center text-muted-foreground">Tasks - Coming Soon</div>} />
             <Route path="/resource-management" element={<div className="p-8 text-center text-muted-foreground">Resource Management - Coming Soon</div>} />
             <Route path="/budgets" element={<div className="p-8 text-center text-muted-foreground">Budgets - Coming Soon</div>} />
