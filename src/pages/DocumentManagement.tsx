@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -12,7 +11,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Textarea } from "@/components/ui/textarea";
 import { Plus, Search, Filter, Download, Eye, Upload, FileText, Sparkles } from "lucide-react";
 import { mockProjects } from "@/lib/mock-data";
-import Link from "next/link";
+import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 
 // Mock documents data

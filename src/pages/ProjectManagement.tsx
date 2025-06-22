@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -10,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Search, Filter, Eye, Edit, Trash2 } from "lucide-react";
 import { mockProjects } from "@/lib/mock-data";
-import Link from "next/link";
+import { Link } from "react-router-dom";
 
 export default function ProjectManagement() {
   const [searchTerm, setSearchTerm] = useState("");

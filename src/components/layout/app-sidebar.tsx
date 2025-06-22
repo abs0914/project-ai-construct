@@ -1,8 +1,8 @@
 
 "use client";
 
-import { usePathname } from "next/navigation";
-import Link from "next/link";
+import { useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   LayoutDashboard,
   Newspaper,
@@ -88,7 +88,7 @@ const navigationItems = [
 ];
 
 export function AppSidebar() {
-  const pathname = usePathname();
+  const location = useLocation();
 
   return (
     <Sidebar className="border-r border-sidebar-border">
@@ -112,10 +112,10 @@ export function AppSidebar() {
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton 
                     asChild 
-                    isActive={pathname === item.url}
+                    isActive={location.pathname === item.url}
                     className="data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground hover:bg-sidebar-accent/50"
                   >
-                    <Link href={item.url} className="flex items-center space-x-2">
+                    <Link to={item.url} className="flex items-center space-x-2">
                       <item.icon size={16} />
                       <span>{item.title}</span>
                     </Link>
