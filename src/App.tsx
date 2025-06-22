@@ -14,6 +14,8 @@ import ProjectUpdateDetail from "@/pages/ProjectUpdateDetail";
 import DocumentManagement from "@/pages/DocumentManagement";
 import ComplianceTracker from "@/pages/ComplianceTracker";
 import SafetyCompliance from "@/pages/SafetyCompliance";
+import Tasks from "@/pages/Tasks";
+import ResourceManagement from "@/pages/ResourceManagement";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -36,9 +38,9 @@ const App = () => (
             <Route path="/document-management" element={<DocumentManagement />} />
             <Route path="/document-management/compliance-tracker" element={<ComplianceTracker />} />
             <Route path="/safety-compliance" element={<SafetyCompliance />} />
+            <Route path="/tasks" element={<Tasks />} />
+            <Route path="/resource-management" element={<ResourceManagement />} />
             {/* Placeholder routes for other modules */}
-            <Route path="/tasks" element={<div className="p-8 text-center text-muted-foreground">Tasks - Coming Soon</div>} />
-            <Route path="/resource-management" element={<div className="p-8 text-center text-muted-foreground">Resource Management - Coming Soon</div>} />
             <Route path="/budgets" element={<div className="p-8 text-center text-muted-foreground">Budgets - Coming Soon</div>} />
             <Route path="/siteguard" element={<div className="p-8 text-center text-muted-foreground">SiteGuard - Coming Soon</div>} />
             <Route path="/chatbot" element={<div className="p-8 text-center text-muted-foreground">AI Chatbot - Coming Soon</div>} />
