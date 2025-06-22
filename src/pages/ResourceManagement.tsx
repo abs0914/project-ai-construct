@@ -100,7 +100,7 @@ export default function ResourceManagement() {
       description: data.description,
       status: "available",
       location: data.location,
-      projectId: data.projectId || undefined,
+      projectId: data.projectId && data.projectId !== "none" ? data.projectId : undefined,
       acquisitionDate: data.acquisitionDate,
       cost: parseFloat(data.cost),
       createdAt: new Date().toISOString(),
@@ -234,7 +234,7 @@ export default function ResourceManagement() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="">No Project</SelectItem>
+                            <SelectItem value="none">No Project</SelectItem>
                             {mockProjects.map((project) => (
                               <SelectItem key={project.id} value={project.id}>
                                 {project.name}
