@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -9,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { Plus, Search, Filter, Download, Eye, Upload, FileText, Sparkles } from "lucide-react";
 import { mockProjects } from "@/lib/mock-data";
 import { Link } from "react-router-dom";
@@ -60,11 +62,25 @@ const mockDocuments = [
   },
 ];
 
+const documentTypes = [
+  { value: "rfi", label: "Request for Information (RFI)" },
+  { value: "change-order", label: "Change Order" },
+  { value: "safety-report", label: "Safety Report" },
+  { value: "progress-report", label: "Progress Report" },
+  { value: "inspection-report", label: "Inspection Report" },
+  { value: "material-specification", label: "Material Specification" },
+  { value: "work-order", label: "Work Order" },
+  { value: "incident-report", label: "Incident Report" },
+  { value: "quality-control", label: "Quality Control Document" },
+  { value: "compliance-checklist", label: "Compliance Checklist" },
+];
+
 export default function DocumentManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const [projectFilter, setProjectFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [aiPrompt, setAiPrompt] = useState("");
+  const [selectedDocumentType, setSelectedDocumentType] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const { toast } = useToast();
 
@@ -86,15 +102,25 @@ export default function DocumentManagement() {
       return;
     }
 
+    if (!selectedDocumentType) {
+      toast({
+        title: "Error",
+        description: "Please select a document type.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsGenerating(true);
     
     // Simulate AI document generation
     setTimeout(() => {
       setIsGenerating(false);
       setAiPrompt("");
+      setSelectedDocumentType("");
       toast({
         title: "Document Generated",
-        description: "Your AI-generated document has been created successfully.",
+        description: `Your AI-generated ${documentTypes.find(dt => dt.value === selectedDocumentType)?.label} has been created successfully.`,
       });
     }, 3000);
   };
@@ -145,17 +171,33 @@ export default function DocumentManagement() {
               <DialogHeader>
                 <DialogTitle>AI Document Generator</DialogTitle>
                 <DialogDescription>
-                  Generate construction documents using AI. Describe what type of document you need.
+                  Generate construction documents using AI. Select document type and describe what you need.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium">Document Description</label>
+                <div className="space-y-2">
+                  <Label htmlFor="documentType">Document Type</Label>
+                  <Select value={selectedDocumentType} onValueChange={setSelectedDocumentType}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select document type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {documentTypes.map((docType) => (
+                        <SelectItem key={docType.value} value={docType.value}>
+                          {docType.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="description">Document Description</Label>
                   <Textarea
+                    id="description"
                     placeholder="e.g., Generate a comprehensive RFI for concrete quality concerns, or Create a safety protocol document for high-rise construction..."
                     value={aiPrompt}
                     onChange={(e) => setAiPrompt(e.target.value)}
-                    className="mt-1"
+                    className="min-h-[100px]"
                   />
                 </div>
                 <Button 

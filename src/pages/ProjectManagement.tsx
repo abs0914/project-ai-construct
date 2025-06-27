@@ -8,13 +8,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Plus, Search, Filter, Eye, Edit, Trash2 } from "lucide-react";
 import { mockProjects } from "@/lib/mock-data";
 import { Link } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 
 export default function ProjectManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [editingProject, setEditingProject] = useState<any>(null);
+  const { toast } = useToast();
   
   const filteredProjects = mockProjects.filter(project => {
     const matchesSearch = project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -41,6 +47,19 @@ export default function ProjectManagement() {
       case "On Hold": return "destructive";
       default: return "outline";
     }
+  };
+
+  const handleEditProject = (project: any) => {
+    setEditingProject({ ...project });
+  };
+
+  const handleSaveProject = () => {
+    // Here you would typically save to your backend
+    toast({
+      title: "Project Updated",
+      description: "Project details have been updated successfully.",
+    });
+    setEditingProject(null);
   };
 
   return (
@@ -110,7 +129,7 @@ export default function ProjectManagement() {
                       <Eye className="h-4 w-4" />
                     </Button>
                   </Link>
-                  <Button variant="ghost" size="icon">
+                  <Button variant="ghost" size="icon" onClick={() => handleEditProject(project)}>
                     <Edit className="h-4 w-4" />
                   </Button>
                   <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
@@ -174,6 +193,78 @@ export default function ProjectManagement() {
           </CardContent>
         </Card>
       )}
+
+      {/* Edit Project Dialog */}
+      <Dialog open={!!editingProject} onOpenChange={() => setEditingProject(null)}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit Project</DialogTitle>
+            <DialogDescription>
+              Update project details and information.
+            </DialogDescription>
+          </DialogHeader>
+          {editingProject && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Project Name</Label>
+                <Input
+                  id="name"
+                  value={editingProject.name}
+                  onChange={(e) => setEditingProject({...editingProject, name: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={editingProject.description}
+                  onChange={(e) => setEditingProject({...editingProject, description: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="status">Status</Label>
+                <Select value={editingProject.status} onValueChange={(value) => setEditingProject({...editingProject, status: value})}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Initiation">Initiation</SelectItem>
+                    <SelectItem value="Planning">Planning</SelectItem>
+                    <SelectItem value="Active">Active</SelectItem>
+                    <SelectItem value="On Hold">On Hold</SelectItem>
+                    <SelectItem value="Completed">Completed</SelectItem>
+                    <SelectItem value="Archived">Archived</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="manager">Project Manager</Label>
+                <Input
+                  id="manager"
+                  value={editingProject.projectManager}
+                  onChange={(e) => setEditingProject({...editingProject, projectManager: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="location">Location</Label>
+                <Input
+                  id="location"
+                  value={editingProject.location}
+                  onChange={(e) => setEditingProject({...editingProject, location: e.target.value})}
+                />
+              </div>
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setEditingProject(null)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleSaveProject}>
+                  Save Changes
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

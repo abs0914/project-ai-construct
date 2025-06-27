@@ -106,6 +106,12 @@ export default function Budgets() {
   const [searchTerm, setSearchTerm] = useState("");
   const [projectFilter, setProjectFilter] = useState("all");
   const [selectedBudget, setSelectedBudget] = useState<string | null>(null);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [newBudget, setNewBudget] = useState({
+    projectId: "",
+    totalBudget: "",
+    description: "",
+  });
   const { toast } = useToast();
 
   const filteredBudgets = mockBudgets.filter(budget => {
@@ -129,15 +135,34 @@ export default function Budgets() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('en-PH', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'PHP',
       minimumFractionDigits: 0,
     }).format(amount);
   };
 
   const getBudgetProgress = (spent: number, allocated: number) => {
     return (spent / allocated) * 100;
+  };
+
+  const handleCreateBudget = () => {
+    if (!newBudget.projectId || !newBudget.totalBudget) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "Budget Created",
+      description: "New budget has been created successfully.",
+    });
+
+    setIsCreateDialogOpen(false);
+    setNewBudget({ projectId: "", totalBudget: "", description: "" });
   };
 
   return (
@@ -149,10 +174,66 @@ export default function Budgets() {
             Track project budgets, expenses, and financial performance across all projects.
           </p>
         </div>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Create Budget
-        </Button>
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Budget
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Create New Budget</DialogTitle>
+              <DialogDescription>
+                Set up a new budget for a project with initial allocation.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="project">Project</Label>
+                <Select value={newBudget.projectId} onValueChange={(value) => setNewBudget({...newBudget, projectId: value})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a project" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {mockProjects.map(project => (
+                      <SelectItem key={project.id} value={project.id}>
+                        {project.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="budget">Total Budget (PHP)</Label>
+                <Input
+                  id="budget"
+                  type="number"
+                  placeholder="Enter total budget amount"
+                  value={newBudget.totalBudget}
+                  onChange={(e) => setNewBudget({...newBudget, totalBudget: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="description">Description (Optional)</Label>
+                <Input
+                  id="description"
+                  placeholder="Budget description or notes"
+                  value={newBudget.description}
+                  onChange={(e) => setNewBudget({...newBudget, description: e.target.value})}
+                />
+              </div>
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleCreateBudget}>
+                  Create Budget
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Overview Cards */}
