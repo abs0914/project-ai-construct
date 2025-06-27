@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState } from "react";
@@ -82,9 +81,13 @@ export default function DocumentManagement() {
   const [aiPrompt, setAiPrompt] = useState("");
   const [selectedDocumentType, setSelectedDocumentType] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [documents, setDocuments] = useState(mockDocuments);
+  const [selectedDocument, setSelectedDocument] = useState<any>(null);
+  const [showGenerateDialog, setShowGenerateDialog] = useState(false);
+  const [showViewDialog, setShowViewDialog] = useState(false);
   const { toast } = useToast();
 
-  const filteredDocuments = mockDocuments.filter(doc => {
+  const filteredDocuments = documents.filter(doc => {
     const matchesSearch = doc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          doc.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesProject = projectFilter === "all" || doc.projectId === projectFilter;
@@ -115,14 +118,73 @@ export default function DocumentManagement() {
     
     // Simulate AI document generation
     setTimeout(() => {
+      const docTypeLabel = documentTypes.find(dt => dt.value === selectedDocumentType)?.label || selectedDocumentType;
+      const newDocument = {
+        id: (documents.length + 1).toString(),
+        projectId: "1", // Default to first project
+        name: `AI Generated ${docTypeLabel}`,
+        type: "pdf",
+        category: getCategoryFromDocType(selectedDocumentType),
+        fileUrl: `/documents/ai-generated-${selectedDocumentType}.pdf`,
+        fileSize: Math.round(Math.random() * 10 + 1),
+        uploadedBy: "AI Assistant",
+        uploadDate: new Date().toISOString().split('T')[0],
+        version: "1.0",
+        status: "draft",
+        tags: [selectedDocumentType, "ai-generated"],
+        content: generateDocumentContent(selectedDocumentType, aiPrompt)
+      };
+
+      setDocuments(prev => [newDocument, ...prev]);
       setIsGenerating(false);
       setAiPrompt("");
       setSelectedDocumentType("");
+      setShowGenerateDialog(false);
+      
       toast({
         title: "Document Generated",
-        description: `Your AI-generated ${documentTypes.find(dt => dt.value === selectedDocumentType)?.label} has been created successfully.`,
+        description: `Your AI-generated ${docTypeLabel} has been created successfully.`,
       });
     }, 3000);
+  };
+
+  const getCategoryFromDocType = (docType: string) => {
+    const categoryMap: { [key: string]: string } = {
+      'rfi': 'compliance',
+      'change-order': 'contract',
+      'safety-report': 'compliance',
+      'progress-report': 'other',
+      'inspection-report': 'compliance',
+      'material-specification': 'specification',
+      'work-order': 'other',
+      'incident-report': 'compliance',
+      'quality-control': 'compliance',
+      'compliance-checklist': 'compliance'
+    };
+    return categoryMap[docType] || 'other';
+  };
+
+  const generateDocumentContent = (docType: string, prompt: string) => {
+    const templates: { [key: string]: string } = {
+      'rfi': `REQUEST FOR INFORMATION\n\nProject: Construction Project\nRFI Number: RFI-${Date.now()}\nDate: ${new Date().toLocaleDateString()}\n\nDescription:\n${prompt}\n\nRequested Information:\n- Technical specifications\n- Material requirements\n- Timeline considerations\n\nSubmitted by: AI Assistant\nStatus: Pending Review`,
+      'safety-report': `SAFETY REPORT\n\nProject: Construction Site Safety Assessment\nReport Date: ${new Date().toLocaleDateString()}\n\nSafety Concerns:\n${prompt}\n\nRecommended Actions:\n- Implement additional safety measures\n- Conduct safety training\n- Regular safety inspections\n\nPrepared by: AI Assistant\nNext Review: ${new Date(Date.now() + 7*24*60*60*1000).toLocaleDateString()}`,
+      'progress-report': `PROGRESS REPORT\n\nProject Status Update\nReporting Period: ${new Date().toLocaleDateString()}\n\nProgress Summary:\n${prompt}\n\nCompleted Tasks:\n- Task 1\n- Task 2\n- Task 3\n\nUpcoming Milestones:\n- Milestone 1\n- Milestone 2\n\nPrepared by: AI Assistant`,
+    };
+    
+    return templates[docType] || `${docType.toUpperCase().replace('-', ' ')}\n\nGenerated Content:\n${prompt}\n\nDocument created by AI Assistant on ${new Date().toLocaleDateString()}`;
+  };
+
+  const handleViewDocument = (doc: any) => {
+    setSelectedDocument(doc);
+    setShowViewDialog(true);
+  };
+
+  const handleDownloadDocument = (doc: any) => {
+    // Simulate document download
+    toast({
+      title: "Download Started",
+      description: `Downloading ${doc.name}...`,
+    });
   };
 
   const getStatusBadge = (status: string) => {
@@ -160,7 +222,7 @@ export default function DocumentManagement() {
               Compliance Tracker
             </Button>
           </Link>
-          <Dialog>
+          <Dialog open={showGenerateDialog} onOpenChange={setShowGenerateDialog}>
             <DialogTrigger asChild>
               <Button className="bg-accent hover:bg-accent/90">
                 <Sparkles className="h-4 w-4 mr-2" />
@@ -329,10 +391,18 @@ export default function DocumentManagement() {
                     </TableCell>
                     <TableCell>
                       <div className="flex space-x-1">
-                        <Button variant="ghost" size="icon">
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => handleViewDocument(doc)}
+                        >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon">
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          onClick={() => handleDownloadDocument(doc)}
+                        >
                           <Download className="h-4 w-4" />
                         </Button>
                       </div>
@@ -344,6 +414,80 @@ export default function DocumentManagement() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Document Viewer Dialog */}
+      <Dialog open={showViewDialog} onOpenChange={setShowViewDialog}>
+        <DialogContent className="sm:max-w-[800px] max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <FileText className="h-5 w-5" />
+              <span>{selectedDocument?.name}</span>
+            </DialogTitle>
+            <DialogDescription>
+              Document details and content preview
+            </DialogDescription>
+          </DialogHeader>
+          {selectedDocument && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <strong>Category:</strong> {getCategoryBadge(selectedDocument.category)}
+                </div>
+                <div>
+                  <strong>Status:</strong> {getStatusBadge(selectedDocument.status)}
+                </div>
+                <div>
+                  <strong>Version:</strong> {selectedDocument.version}
+                </div>
+                <div>
+                  <strong>Size:</strong> {selectedDocument.fileSize} MB
+                </div>
+                <div>
+                  <strong>Uploaded by:</strong> {selectedDocument.uploadedBy}
+                </div>
+                <div>
+                  <strong>Date:</strong> {new Date(selectedDocument.uploadDate).toLocaleDateString()}
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <strong>Tags:</strong>
+                <div className="flex flex-wrap gap-1">
+                  {selectedDocument.tags?.map((tag: string, index: number) => (
+                    <Badge key={index} variant="outline" className="text-xs">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              {selectedDocument.content && (
+                <div className="space-y-2">
+                  <strong>Content Preview:</strong>
+                  <div className="bg-muted p-4 rounded-md max-h-[300px] overflow-y-auto">
+                    <pre className="whitespace-pre-wrap text-sm font-mono">
+                      {selectedDocument.content}
+                    </pre>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end space-x-2 pt-4">
+                <Button 
+                  variant="outline"
+                  onClick={() => handleDownloadDocument(selectedDocument)}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download
+                </Button>
+                <Button onClick={() => setShowViewDialog(false)}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
