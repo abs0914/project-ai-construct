@@ -42,6 +42,7 @@ export const CameraSettings: React.FC<CameraSettingsProps> = ({ onSettingsChange
         .from('cameras')
         .insert([{
           ...newCamera,
+          router_id: newCamera.router_id || null, // Convert empty string to null
           status: 'offline',
           is_recording: false
         }]);
