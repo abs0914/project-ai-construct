@@ -29,6 +29,11 @@ export interface VpnRouter {
   last_seen?: string;
   created_at: string;
   updated_at: string;
+  zerotier_network_id?: string;
+  zerotier_node_id?: string;
+  zerotier_status?: 'connected' | 'disconnected' | 'connecting' | 'error';
+  zerotier_ip_address?: string;
+  zerotier_enabled?: boolean;
 }
 
 export interface SecurityAlert {

@@ -214,6 +214,11 @@ export type Database = {
           name: string
           updated_at: string
           vpn_status: string | null
+          zerotier_enabled: boolean | null
+          zerotier_ip_address: unknown | null
+          zerotier_network_id: string | null
+          zerotier_node_id: string | null
+          zerotier_status: string | null
         }
         Insert: {
           api_key?: string | null
@@ -227,6 +232,11 @@ export type Database = {
           name: string
           updated_at?: string
           vpn_status?: string | null
+          zerotier_enabled?: boolean | null
+          zerotier_ip_address?: unknown | null
+          zerotier_network_id?: string | null
+          zerotier_node_id?: string | null
+          zerotier_status?: string | null
         }
         Update: {
           api_key?: string | null
@@ -240,6 +250,41 @@ export type Database = {
           name?: string
           updated_at?: string
           vpn_status?: string | null
+          zerotier_enabled?: boolean | null
+          zerotier_ip_address?: unknown | null
+          zerotier_network_id?: string | null
+          zerotier_node_id?: string | null
+          zerotier_status?: string | null
+        }
+        Relationships: []
+      }
+      zerotier_networks: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          network_id: string
+          network_name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          network_id: string
+          network_name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          network_id?: string
+          network_name?: string
+          updated_at?: string
         }
         Relationships: []
       }

@@ -34,11 +34,11 @@ export const SiteGuardLiveFeed: React.FC<SiteGuardLiveFeedProps> = ({
         ))}
       </div>
       
-      {/* VPN Router Status */}
+      {/* Router Status */}
       <Card>
         <CardHeader>
-          <CardTitle>VPN Router Status</CardTitle>
-          <CardDescription>GL.iNET GL-MT300N Router Network</CardDescription>
+          <CardTitle>Router Network Status</CardTitle>
+          <CardDescription>GL.iNET GL-MT300N Routers with ZeroTier VPN</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
@@ -50,12 +50,22 @@ export const SiteGuardLiveFeed: React.FC<SiteGuardLiveFeedProps> = ({
                     <p className="font-medium">{router.name}</p>
                     <p className="text-sm text-muted-foreground">{router.location}</p>
                     <p className="text-xs text-muted-foreground">{router.ip_address}</p>
+                    {router.zerotier_enabled && router.zerotier_ip_address && (
+                      <p className="text-xs text-blue-600">ZT: {router.zerotier_ip_address}</p>
+                    )}
                   </div>
                 </div>
                 <div className="text-right">
-                  <Badge variant={router.vpn_status === 'connected' ? 'default' : 'destructive'}>
-                    {router.vpn_status}
-                  </Badge>
+                  <div className="flex flex-col gap-1">
+                    <Badge variant={router.vpn_status === 'connected' ? 'default' : 'destructive'}>
+                      VPN: {router.vpn_status}
+                    </Badge>
+                    {router.zerotier_enabled && (
+                      <Badge variant={router.zerotier_status === 'connected' ? 'default' : 'secondary'}>
+                        ZT: {router.zerotier_status}
+                      </Badge>
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground mt-1">
                     {Math.round(router.bandwidth_usage / 1024 / 1024)} MB
                   </p>

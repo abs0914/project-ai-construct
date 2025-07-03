@@ -10,6 +10,7 @@ import { SiteGuardLiveFeed } from '@/components/siteguard/SiteGuardLiveFeed';
 import { SiteGuardAlerts } from '@/components/siteguard/SiteGuardAlerts';
 import { SiteGuardPersonnel } from '@/components/siteguard/SiteGuardPersonnel';
 import { SiteGuardAnalytics } from '@/components/siteguard/SiteGuardAnalytics';
+import { ZeroTierManagement } from '@/components/siteguard/ZeroTierManagement';
 
 const SiteGuard = () => {
   const { 
@@ -20,7 +21,8 @@ const SiteGuard = () => {
     loading, 
     error, 
     updateCameraRecording, 
-    resolveAlert 
+    resolveAlert,
+    refetch
   } = useSiteGuardData();
   
   const [selectedCamera, setSelectedCamera] = useState<string>('');
@@ -124,6 +126,7 @@ const SiteGuard = () => {
           <TabsTrigger value="live-feed">Live Feed</TabsTrigger>
           <TabsTrigger value="alerts">Alerts</TabsTrigger>
           <TabsTrigger value="personnel">Personnel</TabsTrigger>
+          <TabsTrigger value="zerotier">ZeroTier</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
 
@@ -146,6 +149,18 @@ const SiteGuard = () => {
 
         <TabsContent value="personnel" className="space-y-4">
           <SiteGuardPersonnel personnel={personnel} />
+        </TabsContent>
+
+        <TabsContent value="zerotier" className="space-y-4">
+          <ZeroTierManagement 
+            routers={routers} 
+            onRefresh={() => {
+              refetch.cameras();
+              refetch.routers();
+              refetch.alerts();
+              refetch.personnel();
+            }}
+          />
         </TabsContent>
 
         <TabsContent value="analytics" className="space-y-4">
