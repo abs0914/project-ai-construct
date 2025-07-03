@@ -4,52 +4,88 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Video, 
   Shield, 
   AlertTriangle, 
-  CheckCircle, 
   Clock, 
   MapPin, 
   Users, 
   Camera,
-  Activity,
   Settings,
-  Play,
-  Pause,
-  RotateCcw
+  Wifi,
+  Network
 } from 'lucide-react';
+import { CameraFeed } from '@/components/siteguard/CameraFeed';
+import { useSiteGuardData } from '@/hooks/useSiteGuardData';
+import { format } from 'date-fns';
 
 const SiteGuard = () => {
-  const [selectedCamera, setSelectedCamera] = useState("camera-1");
-  const [isRecording, setIsRecording] = useState(false);
-  const [activeAlerts, setActiveAlerts] = useState(3);
+  const { 
+    cameras, 
+    routers, 
+    alerts, 
+    personnel, 
+    loading, 
+    error, 
+    updateCameraRecording, 
+    resolveAlert 
+  } = useSiteGuardData();
+  
+  const [selectedCamera, setSelectedCamera] = useState<string>('');
 
-  // Mock data for cameras
-  const cameras = [
-    { id: "camera-1", name: "Main Entrance", location: "Gate A", status: "online", recording: true },
-    { id: "camera-2", name: "Construction Zone 1", location: "Building A", status: "online", recording: true },
-    { id: "camera-3", name: "Equipment Storage", location: "Yard B", status: "offline", recording: false },
-    { id: "camera-4", name: "Worker Rest Area", location: "Building C", status: "online", recording: false },
-  ];
+  // Auto-select first camera when data loads
+  React.useEffect(() => {
+    if (cameras.length > 0 && !selectedCamera) {
+      setSelectedCamera(cameras[0].id);
+    }
+  }, [cameras, selectedCamera]);
 
-  // Mock data for alerts
-  const recentAlerts = [
-    { id: 1, type: "security", message: "Unauthorized access detected at Gate B", time: "2 min ago", severity: "high" },
-    { id: 2, type: "safety", message: "Worker without helmet in Zone 3", time: "15 min ago", severity: "medium" },
-    { id: 3, type: "equipment", message: "Excavator left running unattended", time: "1 hour ago", severity: "low" },
-  ];
+  const handleToggleRecording = async (cameraId: string) => {
+    const camera = cameras.find(c => c.id === cameraId);
+    if (!camera) return;
 
-  // Mock data for personnel
-  const activePersonnel = [
-    { id: 1, name: "John Smith", role: "Site Manager", location: "Building A", checkIn: "07:30", status: "active" },
-    { id: 2, name: "Maria Garcia", role: "Safety Inspector", location: "Zone 2", checkIn: "08:00", status: "active" },
-    { id: 3, name: "David Chen", role: "Equipment Operator", location: "Yard B", checkIn: "07:45", status: "break" },
-    { id: 4, name: "Sarah Wilson", role: "Foreman", location: "Building C", checkIn: "07:15", status: "active" },
-  ];
+    try {
+      await updateCameraRecording(cameraId, !camera.is_recording);
+    } catch (err) {
+      console.error('Failed to toggle recording:', err);
+    }
+  };
+
+  const handleResolveAlert = async (alertId: string) => {
+    try {
+      await resolveAlert(alertId);
+    } catch (err) {
+      console.error('Failed to resolve alert:', err);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>Loading SiteGuard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-center">
+          <AlertTriangle className="h-12 w-12 text-destructive mx-auto mb-4" />
+          <p className="text-destructive">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  const onlineCameras = cameras.filter(c => c.status === 'online').length;
+  const connectedRouters = routers.filter(r => r.vpn_status === 'connected').length;
+  const activePersonnelCount = personnel.filter(p => p.status === 'active').length;
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
@@ -78,8 +114,8 @@ const SiteGuard = () => {
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          <Badge variant={activeAlerts > 0 ? "destructive" : "secondary"}>
-            {activeAlerts} Active Alerts
+          <Badge variant={alerts.length > 0 ? "destructive" : "secondary"}>
+            {alerts.length} Active Alerts
           </Badge>
           <Button>
             <Settings className="mr-2 h-4 w-4" />
@@ -96,9 +132,9 @@ const SiteGuard = () => {
             <Video className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">3/4</div>
+            <div className="text-2xl font-bold">{onlineCameras}/{cameras.length}</div>
             <p className="text-xs text-muted-foreground">
-              1 camera offline
+              {cameras.length - onlineCameras} camera{cameras.length - onlineCameras !== 1 ? 's' : ''} offline
             </p>
           </CardContent>
         </Card>
@@ -108,21 +144,21 @@ const SiteGuard = () => {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
+            <div className="text-2xl font-bold">{activePersonnelCount}</div>
             <p className="text-xs text-muted-foreground">
-              +2 from yesterday
+              {personnel.length} total on-site
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Security Status</CardTitle>
-            <Shield className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium">VPN Status</CardTitle>
+            <Network className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">Secure</div>
+            <div className="text-2xl font-bold">{connectedRouters}/{routers.length}</div>
             <p className="text-xs text-muted-foreground">
-              All zones monitored
+              Routers connected
             </p>
           </CardContent>
         </Card>
@@ -132,9 +168,9 @@ const SiteGuard = () => {
             <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">7</div>
+            <div className="text-2xl font-bold">{alerts.length}</div>
             <p className="text-xs text-muted-foreground">
-              3 pending review
+              {alerts.filter(a => !a.resolved).length} pending review
             </p>
           </CardContent>
         </Card>
@@ -149,81 +185,49 @@ const SiteGuard = () => {
         </TabsList>
 
         <TabsContent value="live-feed" className="space-y-4">
-          <div className="grid gap-4 lg:grid-cols-3">
-            <div className="lg:col-span-2">
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle>Camera Feed</CardTitle>
-                    <div className="flex items-center space-x-2">
-                      <Button size="sm" variant="outline">
-                        <RotateCcw className="h-4 w-4" />
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant={isRecording ? "destructive" : "default"}
-                        onClick={() => setIsRecording(!isRecording)}
-                      >
-                        {isRecording ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="aspect-video bg-slate-100 rounded-lg flex items-center justify-center mb-4">
-                    <div className="text-center">
-                      <Camera className="h-12 w-12 text-slate-400 mx-auto mb-2" />
-                      <p className="text-slate-500">Live camera feed would appear here</p>
-                      <p className="text-sm text-slate-400">Camera: {cameras.find(c => c.id === selectedCamera)?.name}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <Select value={selectedCamera} onValueChange={setSelectedCamera}>
-                      <SelectTrigger className="w-48">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {cameras.map((camera) => (
-                          <SelectItem key={camera.id} value={camera.id}>
-                            {camera.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <div className="flex items-center space-x-2">
-                      <div className={`w-2 h-2 rounded-full ${isRecording ? 'bg-red-500' : 'bg-gray-400'}`} />
-                      <span className="text-sm text-muted-foreground">
-                        {isRecording ? 'Recording' : 'Not Recording'}
-                      </span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-            <div>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Camera Status</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {cameras.map((camera) => (
-                      <div key={camera.id} className="flex items-center justify-between p-2 rounded-lg border">
-                        <div>
-                          <p className="font-medium">{camera.name}</p>
-                          <p className="text-sm text-muted-foreground">{camera.location}</p>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <div className={`w-2 h-2 rounded-full ${getStatusColor(camera.status)}`} />
-                          <span className="text-sm capitalize">{camera.status}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {cameras.map((camera) => (
+              <CameraFeed
+                key={camera.id}
+                camera={camera}
+                isSelected={selectedCamera === camera.id}
+                onSelect={() => setSelectedCamera(camera.id)}
+                onToggleRecording={() => handleToggleRecording(camera.id)}
+              />
+            ))}
           </div>
+          
+          {/* VPN Router Status */}
+          <Card>
+            <CardHeader>
+              <CardTitle>VPN Router Status</CardTitle>
+              <CardDescription>GL.iNET GL-MT300N Router Network</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                {routers.map((router) => (
+                  <div key={router.id} className="flex items-center justify-between p-3 rounded-lg border">
+                    <div className="flex items-center space-x-3">
+                      <Wifi className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="font-medium">{router.name}</p>
+                        <p className="text-sm text-muted-foreground">{router.location}</p>
+                        <p className="text-xs text-muted-foreground">{router.ip_address}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <Badge variant={router.vpn_status === 'connected' ? 'default' : 'destructive'}>
+                        {router.vpn_status}
+                      </Badge>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {Math.round(router.bandwidth_usage / 1024 / 1024)} MB
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="alerts" className="space-y-4">
@@ -236,25 +240,41 @@ const SiteGuard = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {recentAlerts.map((alert) => (
-                  <div key={alert.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <AlertTriangle className="h-5 w-5 text-orange-500" />
-                      <div>
-                        <p className="font-medium">{alert.message}</p>
-                        <p className="text-sm text-muted-foreground">{alert.time}</p>
+                {alerts.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Shield className="h-12 w-12 text-green-500 mx-auto mb-4" />
+                    <p className="text-muted-foreground">No active alerts</p>
+                  </div>
+                ) : (
+                  alerts.map((alert) => (
+                    <div key={alert.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <AlertTriangle className="h-5 w-5 text-orange-500" />
+                        <div>
+                          <p className="font-medium">{alert.message}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {format(new Date(alert.created_at), 'MMM d, HH:mm')}
+                          </p>
+                          <Badge variant="outline" className="text-xs mt-1">
+                            {alert.alert_type}
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Badge variant={getSeverityColor(alert.severity)}>
+                          {alert.severity}
+                        </Badge>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handleResolveAlert(alert.id)}
+                        >
+                          Resolve
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <Badge variant={getSeverityColor(alert.severity)}>
-                        {alert.severity}
-                      </Badge>
-                      <Button size="sm" variant="outline">
-                        Review
-                      </Button>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>
@@ -270,32 +290,47 @@ const SiteGuard = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {activePersonnel.map((person) => (
-                  <div key={person.id} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
-                        <Users className="h-5 w-5 text-primary" />
-                      </div>
-                      <div>
-                        <p className="font-medium">{person.name}</p>
-                        <p className="text-sm text-muted-foreground">{person.role}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <MapPin className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">{person.location}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Clock className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">Check-in: {person.checkIn}</span>
-                        <Badge variant={person.status === 'active' ? 'default' : 'secondary'}>
-                          {person.status}
-                        </Badge>
-                      </div>
-                    </div>
+                {personnel.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <p className="text-muted-foreground">No personnel currently on-site</p>
                   </div>
-                ))}
+                ) : (
+                  personnel.map((person) => (
+                    <div key={person.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                          <Users className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-medium">{person.name}</p>
+                          <p className="text-sm text-muted-foreground">{person.role}</p>
+                          <p className="text-xs text-muted-foreground">#{person.badge_number}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        {person.location && (
+                          <div className="flex items-center space-x-2 mb-1">
+                            <MapPin className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm">{person.location}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center space-x-2">
+                          <Clock className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">
+                            {person.check_in_time 
+                              ? format(new Date(person.check_in_time), 'HH:mm')
+                              : 'Not checked in'
+                            }
+                          </span>
+                          <Badge variant={person.status === 'active' ? 'default' : 'secondary'}>
+                            {person.status}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>

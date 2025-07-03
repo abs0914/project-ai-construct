@@ -9,7 +9,240 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      camera_recordings: {
+        Row: {
+          camera_id: string
+          created_at: string
+          duration_seconds: number | null
+          ended_at: string | null
+          file_size: number | null
+          filename: string
+          id: string
+          recording_type: string | null
+          started_at: string
+          storage_path: string | null
+          thumbnail_path: string | null
+        }
+        Insert: {
+          camera_id: string
+          created_at?: string
+          duration_seconds?: number | null
+          ended_at?: string | null
+          file_size?: number | null
+          filename: string
+          id?: string
+          recording_type?: string | null
+          started_at: string
+          storage_path?: string | null
+          thumbnail_path?: string | null
+        }
+        Update: {
+          camera_id?: string
+          created_at?: string
+          duration_seconds?: number | null
+          ended_at?: string | null
+          file_size?: number | null
+          filename?: string
+          id?: string
+          recording_type?: string | null
+          started_at?: string
+          storage_path?: string | null
+          thumbnail_path?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "camera_recordings_camera_id_fkey"
+            columns: ["camera_id"]
+            isOneToOne: false
+            referencedRelation: "cameras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cameras: {
+        Row: {
+          created_at: string
+          id: string
+          ip_address: unknown
+          is_recording: boolean | null
+          last_seen: string | null
+          location: string
+          name: string
+          onvif_port: number | null
+          password_encrypted: string | null
+          router_id: string | null
+          rtsp_url: string | null
+          status: string | null
+          updated_at: string
+          username: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ip_address: unknown
+          is_recording?: boolean | null
+          last_seen?: string | null
+          location: string
+          name: string
+          onvif_port?: number | null
+          password_encrypted?: string | null
+          router_id?: string | null
+          rtsp_url?: string | null
+          status?: string | null
+          updated_at?: string
+          username?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ip_address?: unknown
+          is_recording?: boolean | null
+          last_seen?: string | null
+          location?: string
+          name?: string
+          onvif_port?: number | null
+          password_encrypted?: string | null
+          router_id?: string | null
+          rtsp_url?: string | null
+          status?: string | null
+          updated_at?: string
+          username?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_cameras_router"
+            columns: ["router_id"]
+            isOneToOne: false
+            referencedRelation: "vpn_routers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      security_alerts: {
+        Row: {
+          alert_type: string
+          camera_id: string | null
+          created_at: string
+          id: string
+          message: string
+          metadata: Json | null
+          resolved: boolean | null
+          resolved_at: string | null
+          severity: string
+        }
+        Insert: {
+          alert_type: string
+          camera_id?: string | null
+          created_at?: string
+          id?: string
+          message: string
+          metadata?: Json | null
+          resolved?: boolean | null
+          resolved_at?: string | null
+          severity: string
+        }
+        Update: {
+          alert_type?: string
+          camera_id?: string | null
+          created_at?: string
+          id?: string
+          message?: string
+          metadata?: Json | null
+          resolved?: boolean | null
+          resolved_at?: string | null
+          severity?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "security_alerts_camera_id_fkey"
+            columns: ["camera_id"]
+            isOneToOne: false
+            referencedRelation: "cameras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      site_personnel: {
+        Row: {
+          badge_number: string | null
+          check_in_time: string | null
+          check_out_time: string | null
+          created_at: string
+          id: string
+          location: string | null
+          name: string
+          role: string
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          badge_number?: string | null
+          check_in_time?: string | null
+          check_out_time?: string | null
+          created_at?: string
+          id?: string
+          location?: string | null
+          name: string
+          role: string
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          badge_number?: string | null
+          check_in_time?: string | null
+          check_out_time?: string | null
+          created_at?: string
+          id?: string
+          location?: string | null
+          name?: string
+          role?: string
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      vpn_routers: {
+        Row: {
+          api_key: string | null
+          bandwidth_usage: number | null
+          created_at: string
+          id: string
+          ip_address: unknown
+          last_seen: string | null
+          location: string | null
+          model: string | null
+          name: string
+          updated_at: string
+          vpn_status: string | null
+        }
+        Insert: {
+          api_key?: string | null
+          bandwidth_usage?: number | null
+          created_at?: string
+          id?: string
+          ip_address: unknown
+          last_seen?: string | null
+          location?: string | null
+          model?: string | null
+          name: string
+          updated_at?: string
+          vpn_status?: string | null
+        }
+        Update: {
+          api_key?: string | null
+          bandwidth_usage?: number | null
+          created_at?: string
+          id?: string
+          ip_address?: unknown
+          last_seen?: string | null
+          location?: string | null
+          model?: string | null
+          name?: string
+          updated_at?: string
+          vpn_status?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
