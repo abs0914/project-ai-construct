@@ -55,6 +55,15 @@ const SiteGuard = () => {
     }
   };
 
+  const handleRefreshCamera = async (cameraId: string) => {
+    try {
+      // Refresh camera data
+      refetch.cameras();
+    } catch (err) {
+      console.error('Failed to refresh camera:', err);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -139,6 +148,7 @@ const SiteGuard = () => {
             selectedCamera={selectedCamera}
             onSelectCamera={setSelectedCamera}
             onToggleRecording={handleToggleRecording}
+            onRefreshCamera={handleRefreshCamera}
           />
         </TabsContent>
 

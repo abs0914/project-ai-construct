@@ -19,13 +19,17 @@ interface CameraFeedProps {
   isSelected: boolean;
   onSelect: () => void;
   onToggleRecording: () => void;
+  onRefresh?: () => void;
+  onSettings?: () => void;
 }
 
 export const CameraFeed: React.FC<CameraFeedProps> = ({
   camera,
   isSelected,
   onSelect,
-  onToggleRecording
+  onToggleRecording,
+  onRefresh,
+  onSettings
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -126,7 +130,15 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({
         
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-1">
-            <Button size="sm" variant="outline" disabled={camera.status !== 'online'}>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={() => {
+                connectToCamera();
+                onRefresh?.();
+              }}
+              title="Refresh camera connection"
+            >
               <RotateCcw className="h-3 w-3" />
             </Button>
             <Button 
@@ -134,15 +146,27 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({
               variant={camera.is_recording ? "destructive" : "default"}
               onClick={onToggleRecording}
               disabled={camera.status !== 'online'}
+              title={camera.is_recording ? "Stop recording" : "Start recording"}
             >
               {camera.is_recording ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
             </Button>
           </div>
           <div className="flex items-center space-x-1">
-            <Button size="sm" variant="outline" disabled={camera.status !== 'online'}>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              disabled={camera.status !== 'online'}
+              onClick={onSelect}
+              title="Maximize view"
+            >
               <Maximize2 className="h-3 w-3" />
             </Button>
-            <Button size="sm" variant="outline">
+            <Button 
+              size="sm" 
+              variant="outline"
+              onClick={onSettings}
+              title="Camera settings"
+            >
               <Settings className="h-3 w-3" />
             </Button>
           </div>

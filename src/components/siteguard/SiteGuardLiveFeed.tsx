@@ -11,6 +11,7 @@ interface SiteGuardLiveFeedProps {
   selectedCamera: string;
   onSelectCamera: (cameraId: string) => void;
   onToggleRecording: (cameraId: string) => void;
+  onRefreshCamera?: (cameraId: string) => void;
 }
 
 export const SiteGuardLiveFeed: React.FC<SiteGuardLiveFeedProps> = ({
@@ -18,7 +19,8 @@ export const SiteGuardLiveFeed: React.FC<SiteGuardLiveFeedProps> = ({
   routers,
   selectedCamera,
   onSelectCamera,
-  onToggleRecording
+  onToggleRecording,
+  onRefreshCamera
 }) => {
   return (
     <div className="space-y-4">
@@ -30,6 +32,11 @@ export const SiteGuardLiveFeed: React.FC<SiteGuardLiveFeedProps> = ({
             isSelected={selectedCamera === camera.id}
             onSelect={() => onSelectCamera(camera.id)}
             onToggleRecording={() => onToggleRecording(camera.id)}
+            onRefresh={() => onRefreshCamera?.(camera.id)}
+            onSettings={() => {
+              // Navigate to camera settings - you can implement this later
+              window.location.href = `/siteguard/settings?camera=${camera.id}`;
+            }}
           />
         ))}
       </div>
