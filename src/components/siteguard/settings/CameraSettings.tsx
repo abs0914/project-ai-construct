@@ -222,44 +222,52 @@ export const CameraSettings: React.FC<CameraSettingsProps> = ({ onSettingsChange
                 No cameras configured yet. Add your first camera above.
               </p>
             ) : (
-              cameras.map((camera) => (
-                <div key={camera.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center space-x-4">
-                    <Camera className="h-8 w-8 text-muted-foreground" />
-                    <div>
-                      <h4 className="font-medium">{camera.name}</h4>
-                      <p className="text-sm text-muted-foreground">{camera.location}</p>
-                      <p className="text-xs text-muted-foreground">{camera.ip_address}:{camera.onvif_port}</p>
+              cameras.map((camera) => {
+                const connectedRouter = routers.find(r => r.id === camera.router_id);
+                return (
+                  <div key={camera.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center space-x-4">
+                      <Camera className="h-8 w-8 text-muted-foreground" />
+                      <div>
+                        <h4 className="font-medium">{camera.name}</h4>
+                        <p className="text-sm text-muted-foreground">{camera.location}</p>
+                        <p className="text-xs text-muted-foreground">{camera.ip_address}:{camera.onvif_port}</p>
+                        {connectedRouter && (
+                          <p className="text-xs text-blue-600">
+                            Router: {connectedRouter.name} ({connectedRouter.zerotier_ip_address})
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <Badge variant={camera.status === 'online' ? 'default' : 'secondary'}>
+                          {camera.status}
+                        </Badge>
+                        {camera.is_recording && (
+                          <Badge variant="destructive">Recording</Badge>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Badge variant={camera.status === 'online' ? 'default' : 'secondary'}>
-                        {camera.status}
-                      </Badge>
-                      {camera.is_recording && (
-                        <Badge variant="destructive">Recording</Badge>
-                      )}
+                    
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center space-x-2">
+                        <Label htmlFor={`recording-${camera.id}`} className="text-sm">Recording</Label>
+                        <Switch
+                          id={`recording-${camera.id}`}
+                          checked={camera.is_recording || false}
+                          onCheckedChange={() => handleToggleRecording(camera.id, camera.is_recording || false)}
+                        />
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleDeleteCamera(camera.id, camera.name)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
-                  
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center space-x-2">
-                      <Label htmlFor={`recording-${camera.id}`} className="text-sm">Recording</Label>
-                      <Switch
-                        id={`recording-${camera.id}`}
-                        checked={camera.is_recording || false}
-                        onCheckedChange={() => handleToggleRecording(camera.id, camera.is_recording || false)}
-                      />
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => handleDeleteCamera(camera.id, camera.name)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </CardContent>
