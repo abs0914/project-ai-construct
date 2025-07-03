@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Settings, AlertTriangle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useSiteGuardData } from '@/hooks/useSiteGuardData';
 import { SiteGuardOverview } from '@/components/siteguard/SiteGuardOverview';
 import { SiteGuardLiveFeed } from '@/components/siteguard/SiteGuardLiveFeed';
@@ -13,6 +14,7 @@ import { SiteGuardAnalytics } from '@/components/siteguard/SiteGuardAnalytics';
 import { ZeroTierManagement } from '@/components/siteguard/ZeroTierManagement';
 
 const SiteGuard = () => {
+  const navigate = useNavigate();
   const { 
     cameras, 
     routers, 
@@ -106,7 +108,7 @@ const SiteGuard = () => {
           <Badge variant={alerts.length > 0 ? "destructive" : "secondary"}>
             {alerts.length} Active Alerts
           </Badge>
-          <Button>
+          <Button onClick={() => navigate('/siteguard/settings')}>
             <Settings className="mr-2 h-4 w-4" />
             Settings
           </Button>

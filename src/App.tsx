@@ -18,6 +18,7 @@ import Tasks from "@/pages/Tasks";
 import ResourceManagement from "@/pages/ResourceManagement";
 import Budgets from "@/pages/Budgets";
 import SiteGuard from "@/pages/SiteGuard";
+import SiteGuardSettings from "@/pages/SiteGuardSettings";
 import AIChatbot from "@/pages/AIChatbot";
 import NotFound from "./pages/NotFound";
 
@@ -45,6 +46,7 @@ const App = () => (
             <Route path="/resource-management" element={<ResourceManagement />} />
             <Route path="/budgets" element={<Budgets />} />
             <Route path="/siteguard" element={<SiteGuard />} />
+            <Route path="/siteguard/settings" element={<SiteGuardSettings />} />
             <Route path="/chatbot" element={<AIChatbot />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
