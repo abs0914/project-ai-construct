@@ -12,6 +12,8 @@ import { SiteGuardAlerts } from '@/components/siteguard/SiteGuardAlerts';
 import { SiteGuardPersonnel } from '@/components/siteguard/SiteGuardPersonnel';
 import { SiteGuardAnalytics } from '@/components/siteguard/SiteGuardAnalytics';
 import { ZeroTierManagement } from '@/components/siteguard/ZeroTierManagement';
+import { ONVIFDiscovery } from '@/components/siteguard/ONVIFDiscovery';
+import { NetworkManagement } from '@/components/siteguard/NetworkManagement';
 
 const SiteGuard = () => {
   const navigate = useNavigate();
@@ -135,6 +137,8 @@ const SiteGuard = () => {
       <Tabs defaultValue="live-feed" className="space-y-4">
         <TabsList>
           <TabsTrigger value="live-feed">Live Feed</TabsTrigger>
+          <TabsTrigger value="onvif-discovery">ONVIF Discovery</TabsTrigger>
+          <TabsTrigger value="network">Network</TabsTrigger>
           <TabsTrigger value="alerts">Alerts</TabsTrigger>
           <TabsTrigger value="personnel">Personnel</TabsTrigger>
           <TabsTrigger value="zerotier">ZeroTier</TabsTrigger>
@@ -150,6 +154,14 @@ const SiteGuard = () => {
             onToggleRecording={handleToggleRecording}
             onRefreshCamera={handleRefreshCamera}
           />
+        </TabsContent>
+
+        <TabsContent value="onvif-discovery" className="space-y-4">
+          <ONVIFDiscovery />
+        </TabsContent>
+
+        <TabsContent value="network" className="space-y-4">
+          <NetworkManagement />
         </TabsContent>
 
         <TabsContent value="alerts" className="space-y-4">

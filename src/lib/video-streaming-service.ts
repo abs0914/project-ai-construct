@@ -1,0 +1,338 @@
+import { WebRTCClient, StreamConfig as WebRTCConfig, StreamStats as WebRTCStats } from './webrtc-client';
+import { HLSClient, HLSConfig, HLSStats } from './hls-client';
+
+export interface StreamingConfig {
+  cameraId: string;
+  rtspUrl: string;
+  username?: string;
+  password?: string;
+  preferredProtocol?: 'webrtc' | 'hls' | 'auto';
+  autoplay?: boolean;
+  muted?: boolean;
+}
+
+export interface UnifiedStreamStats {
+  protocol: 'webrtc' | 'hls';
+  bitrate: number;
+  fps: number;
+  resolution: { width: number; height: number };
+  latency?: number;
+  bufferLength?: number;
+  droppedFrames?: number;
+  connectionState: string;
+}
+
+export type StreamingProtocol = 'webrtc' | 'hls';
+
+export class VideoStreamingService {
+  private webrtcClient: WebRTCClient | null = null;
+  private hlsClient: HLSClient | null = null;
+  private currentProtocol: StreamingProtocol | null = null;
+  private config: StreamingConfig;
+  private videoElement: HTMLVideoElement | null = null;
+  private mediaServerUrl = 'http://localhost:3001';
+  
+  // Event callbacks
+  private onStatsCallback?: (stats: UnifiedStreamStats) => void;
+  private onErrorCallback?: (error: Error) => void;
+  private onStateChangeCallback?: (state: string) => void;
+  private onProtocolSwitchCallback?: (protocol: StreamingProtocol) => void;
+
+  constructor(config: StreamingConfig) {
+    this.config = config;
+  }
+
+  async startStream(videoElement: HTMLVideoElement): Promise<void> {
+    this.videoElement = videoElement;
+
+    try {
+      // First, start the stream on the media server
+      await this.startMediaServerStream();
+
+      // Determine the best protocol to use
+      const protocol = await this.selectOptimalProtocol();
+      
+      // Connect using the selected protocol
+      await this.connectWithProtocol(protocol);
+      
+    } catch (error) {
+      this.handleError(new Error(`Failed to start stream: ${error.message}`));
+      throw error;
+    }
+  }
+
+  private async startMediaServerStream(): Promise<{ webrtcUrl: string; hlsUrl: string }> {
+    const response = await fetch(`${this.mediaServerUrl}/api/streams/${this.config.cameraId}/start`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        rtspUrl: this.config.rtspUrl,
+        username: this.config.username,
+        password: this.config.password,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Media server error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.urls;
+  }
+
+  private async selectOptimalProtocol(): Promise<StreamingProtocol> {
+    if (this.config.preferredProtocol && this.config.preferredProtocol !== 'auto') {
+      return this.config.preferredProtocol;
+    }
+
+    // Auto-select based on browser capabilities and network conditions
+    const supportsWebRTC = this.isWebRTCSupported();
+    const supportsHLS = HLSClient.isSupported() || (this.videoElement && 
+      HLSClient.canPlayNatively(this.videoElement, ''));
+
+    // Prefer WebRTC for lower latency, fallback to HLS
+    if (supportsWebRTC) {
+      return 'webrtc';
+    } else if (supportsHLS) {
+      return 'hls';
+    } else {
+      throw new Error('No supported streaming protocol available');
+    }
+  }
+
+  private isWebRTCSupported(): boolean {
+    return !!(window.RTCPeerConnection && window.WebSocket);
+  }
+
+  private async connectWithProtocol(protocol: StreamingProtocol): Promise<void> {
+    this.currentProtocol = protocol;
+
+    if (this.onProtocolSwitchCallback) {
+      this.onProtocolSwitchCallback(protocol);
+    }
+
+    switch (protocol) {
+      case 'webrtc':
+        await this.connectWebRTC();
+        break;
+      case 'hls':
+        await this.connectHLS();
+        break;
+      default:
+        throw new Error(`Unsupported protocol: ${protocol}`);
+    }
+  }
+
+  private async connectWebRTC(): Promise<void> {
+    if (!this.videoElement) throw new Error('Video element not available');
+
+    const webrtcConfig: WebRTCConfig = {
+      streamKey: `camera_${this.config.cameraId}`,
+      signalingUrl: `ws://localhost:8001/webrtc/camera_${this.config.cameraId}`,
+    };
+
+    this.webrtcClient = new WebRTCClient(webrtcConfig);
+
+    // Set up event handlers
+    this.webrtcClient.onStats((stats: WebRTCStats) => {
+      if (this.onStatsCallback) {
+        this.onStatsCallback({
+          protocol: 'webrtc',
+          ...stats,
+          connectionState: this.webrtcClient?.getConnectionState() || 'unknown'
+        });
+      }
+    });
+
+    this.webrtcClient.onError((error: Error) => {
+      console.error('WebRTC error, attempting HLS fallback:', error);
+      this.fallbackToHLS();
+    });
+
+    this.webrtcClient.onConnectionState((state) => {
+      if (this.onStateChangeCallback) {
+        this.onStateChangeCallback(`webrtc-${state}`);
+      }
+
+      // If WebRTC fails, fallback to HLS
+      if (state === 'failed' || state === 'disconnected') {
+        console.log('WebRTC connection failed, falling back to HLS');
+        this.fallbackToHLS();
+      }
+    });
+
+    await this.webrtcClient.connect(this.videoElement);
+  }
+
+  private async connectHLS(): Promise<void> {
+    if (!this.videoElement) throw new Error('Video element not available');
+
+    const hlsConfig: HLSConfig = {
+      streamUrl: `http://localhost:8000/live/camera_${this.config.cameraId}/index.m3u8`,
+      autoplay: this.config.autoplay ?? true,
+      muted: this.config.muted ?? true,
+    };
+
+    this.hlsClient = new HLSClient(hlsConfig);
+
+    // Set up event handlers
+    this.hlsClient.onStats((stats: HLSStats) => {
+      if (this.onStatsCallback) {
+        this.onStatsCallback({
+          protocol: 'hls',
+          ...stats,
+          connectionState: this.hlsClient?.isPlaying() ? 'playing' : 'paused'
+        });
+      }
+    });
+
+    this.hlsClient.onError((error: Error) => {
+      this.handleError(error);
+    });
+
+    this.hlsClient.onStateChange((state) => {
+      if (this.onStateChangeCallback) {
+        this.onStateChangeCallback(`hls-${state}`);
+      }
+    });
+
+    await this.hlsClient.connect(this.videoElement);
+  }
+
+  private async fallbackToHLS(): Promise<void> {
+    if (this.currentProtocol === 'hls') {
+      // Already using HLS, can't fallback further
+      this.handleError(new Error('HLS connection also failed'));
+      return;
+    }
+
+    try {
+      console.log('Falling back to HLS...');
+      
+      // Cleanup WebRTC
+      if (this.webrtcClient) {
+        this.webrtcClient.disconnect();
+        this.webrtcClient = null;
+      }
+
+      // Connect with HLS
+      await this.connectWithProtocol('hls');
+      
+    } catch (error) {
+      this.handleError(new Error(`Fallback to HLS failed: ${error.message}`));
+    }
+  }
+
+  // Control methods
+  async play(): Promise<void> {
+    if (this.currentProtocol === 'hls' && this.hlsClient) {
+      return this.hlsClient.play();
+    } else if (this.videoElement) {
+      return this.videoElement.play();
+    }
+  }
+
+  pause(): void {
+    if (this.currentProtocol === 'hls' && this.hlsClient) {
+      this.hlsClient.pause();
+    } else if (this.videoElement) {
+      this.videoElement.pause();
+    }
+  }
+
+  setVolume(volume: number): void {
+    if (this.currentProtocol === 'hls' && this.hlsClient) {
+      this.hlsClient.setVolume(volume);
+    } else if (this.videoElement) {
+      this.videoElement.volume = Math.max(0, Math.min(1, volume));
+    }
+  }
+
+  setMuted(muted: boolean): void {
+    if (this.currentProtocol === 'hls' && this.hlsClient) {
+      this.hlsClient.setMuted(muted);
+    } else if (this.videoElement) {
+      this.videoElement.muted = muted;
+    }
+  }
+
+  // Quality control (HLS only)
+  getAvailableQualities(): Array<{ level: number; width: number; height: number; bitrate: number }> {
+    if (this.currentProtocol === 'hls' && this.hlsClient) {
+      return this.hlsClient.getAvailableQualities();
+    }
+    return [];
+  }
+
+  setQuality(level: number): void {
+    if (this.currentProtocol === 'hls' && this.hlsClient) {
+      this.hlsClient.setQuality(level);
+    }
+  }
+
+  // Event handlers
+  onStats(callback: (stats: UnifiedStreamStats) => void): void {
+    this.onStatsCallback = callback;
+  }
+
+  onError(callback: (error: Error) => void): void {
+    this.onErrorCallback = callback;
+  }
+
+  onStateChange(callback: (state: string) => void): void {
+    this.onStateChangeCallback = callback;
+  }
+
+  onProtocolSwitch(callback: (protocol: StreamingProtocol) => void): void {
+    this.onProtocolSwitchCallback = callback;
+  }
+
+  // Utility methods
+  getCurrentProtocol(): StreamingProtocol | null {
+    return this.currentProtocol;
+  }
+
+  isConnected(): boolean {
+    if (this.currentProtocol === 'webrtc' && this.webrtcClient) {
+      return this.webrtcClient.isConnected();
+    } else if (this.currentProtocol === 'hls' && this.hlsClient) {
+      return this.hlsClient.isPlaying();
+    }
+    return false;
+  }
+
+  // Cleanup
+  async stopStream(): Promise<void> {
+    // Stop the stream on the media server
+    try {
+      await fetch(`${this.mediaServerUrl}/api/streams/camera_${this.config.cameraId}/stop`, {
+        method: 'POST',
+      });
+    } catch (error) {
+      console.error('Error stopping media server stream:', error);
+    }
+
+    // Cleanup clients
+    if (this.webrtcClient) {
+      this.webrtcClient.disconnect();
+      this.webrtcClient = null;
+    }
+
+    if (this.hlsClient) {
+      this.hlsClient.disconnect();
+      this.hlsClient = null;
+    }
+
+    this.currentProtocol = null;
+    this.videoElement = null;
+  }
+
+  private handleError(error: Error): void {
+    console.error('Video Streaming Service Error:', error);
+    if (this.onErrorCallback) {
+      this.onErrorCallback(error);
+    }
+  }
+}
