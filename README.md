@@ -1,73 +1,224 @@
-# Welcome to your Lovable project
+# SiteGuard - Advanced Security & Surveillance Management System
 
-## Project info
+🛡️ **SiteGuard** is a comprehensive security and surveillance management platform designed for construction sites, facilities, and remote locations. It provides real-time monitoring, ONVIF camera integration, network management, and advanced security features.
 
-**URL**: https://lovable.dev/projects/66748df0-6d8e-4361-b644-77957af188bc
+## 🌟 Features
 
-## How can I edit this code?
+- **Real-time Video Surveillance** - Live streaming and recording from ONVIF-compatible cameras
+- **Network Management** - ZeroTier VPN integration and network device monitoring
+- **Security Dashboard** - Centralized monitoring with alerts and analytics
+- **Multi-Server Architecture** - Scalable backend services for different functionalities
+- **Mobile-Responsive UI** - Modern React-based interface with real-time updates
+- **Advanced Analytics** - Motion detection, facial recognition, and AI-powered insights
 
-There are several ways of editing your application.
+## 🏗️ Architecture
 
-**Use Lovable**
+SiteGuard consists of multiple specialized services:
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/66748df0-6d8e-4361-b644-77957af188bc) and start prompting.
+- **Frontend** (Port 3000) - React-based user interface
+- **Media Server** (Port 3001) - Video streaming and recording management
+- **ONVIF Server** (Port 3002) - Camera discovery and integration
+- **Network Server** (Port 3003) - VPN and network device management
+- **Security Server** (Port 3004) - Authentication and security features
 
-Changes made via Lovable will be committed automatically to this repo.
+## 🚀 Quick Deployment on Contabo VPS
 
-**Use your preferred IDE**
+### One-Command Deployment
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+```bash
+# Download and run the quick deployment script
+wget https://raw.githubusercontent.com/abs0914/project-ai-construct/main/quick-deploy.sh
+chmod +x quick-deploy.sh
+sudo ./quick-deploy.sh -d your-domain.com -e admin@your-domain.com
+```
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### Manual Step-by-Step Deployment
 
-Follow these steps:
+1. **Initial VPS Setup:**
+   ```bash
+   wget https://raw.githubusercontent.com/abs0914/project-ai-construct/main/contabo-initial-setup.sh
+   chmod +x contabo-initial-setup.sh
+   sudo ./contabo-initial-setup.sh
+   ```
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+2. **Deploy Application:**
+   ```bash
+   sudo su - siteguard
+   wget https://raw.githubusercontent.com/abs0914/project-ai-construct/main/deploy-siteguard.sh
+   chmod +x deploy-siteguard.sh
+   ./deploy-siteguard.sh your-domain.com
+   ```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+3. **Setup SSL Certificate:**
+   ```bash
+   sudo wget https://raw.githubusercontent.com/abs0914/project-ai-construct/main/setup-ssl.sh
+   sudo chmod +x setup-ssl.sh
+   sudo ./setup-ssl.sh your-domain.com admin@your-domain.com
+   ```
 
-# Step 3: Install the necessary dependencies.
-npm i
+4. **Configure Monitoring:**
+   ```bash
+   sudo wget https://raw.githubusercontent.com/abs0914/project-ai-construct/main/monitoring-setup.sh
+   sudo chmod +x monitoring-setup.sh
+   sudo ./monitoring-setup.sh
+   ```
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+5. **Test Deployment:**
+   ```bash
+   wget https://raw.githubusercontent.com/abs0914/project-ai-construct/main/test-deployment.sh
+   chmod +x test-deployment.sh
+   ./test-deployment.sh
+   ```
+
+## 📖 Documentation
+
+- **[Complete Deployment Guide](DEPLOYMENT_GUIDE.md)** - Detailed deployment instructions
+- **[Security Implementation](SECURITY_IMPLEMENTATION.md)** - Security features and configuration
+- **[Network Management](NETWORK_MANAGEMENT.md)** - VPN and network setup
+- **[ONVIF Integration](ONVIF_INTEGRATION.md)** - Camera integration guide
+- **[Streaming Infrastructure](STREAMING_INFRASTRUCTURE.md)** - Media streaming setup
+
+## 🛠️ Development Setup
+
+### Prerequisites
+
+- Node.js 18+ and npm
+- FFmpeg for media processing
+- Git
+
+### Local Development
+
+```bash
+# Clone the repository
+git clone https://github.com/abs0914/project-ai-construct.git
+cd project-ai-construct
+
+# Install dependencies
+npm install
+
+# Start all services in development mode
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+This will start:
+- Frontend development server (http://localhost:5173)
+- Media server (http://localhost:3001)
+- ONVIF server (http://localhost:3002)
+- Network server (http://localhost:3003)
+- Security server (http://localhost:3004)
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Individual Service Development
 
-**Use GitHub Codespaces**
+```bash
+# Frontend only
+npm run dev:client
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+# Backend services
+npm run dev:media-server
+npm run dev:onvif-server
+npm run dev:network-server
+npm run dev:security-server
+```
 
-## What technologies are used for this project?
+## 🧪 Testing
 
-This project is built with:
+```bash
+# Run individual service tests
+npm run test:streaming
+npm run test:onvif
+npm run test:network
+npm run test:security
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+# Test production deployment
+./test-deployment.sh
+```
 
-## How can I deploy this project?
+## 🔧 Technologies Used
 
-Simply open [Lovable](https://lovable.dev/projects/66748df0-6d8e-4361-b644-77957af188bc) and click on Share -> Publish.
+### Frontend
+- **React 18** with TypeScript
+- **Vite** for build tooling
+- **Tailwind CSS** for styling
+- **shadcn/ui** component library
+- **React Router** for navigation
+- **TanStack Query** for data fetching
 
-## Can I connect a custom domain to my Lovable project?
+### Backend
+- **Node.js** with Express
+- **Socket.io** for real-time communication
+- **FFmpeg** for media processing
+- **ONVIF** for camera integration
+- **PM2** for process management
 
-Yes, you can!
+### Infrastructure
+- **Nginx** as reverse proxy
+- **Let's Encrypt** for SSL certificates
+- **Supabase** for database
+- **ZeroTier** for VPN networking
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## 🔒 Security Features
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+- JWT-based authentication
+- Role-based access control (RBAC)
+- End-to-end encryption
+- Fail2ban intrusion prevention
+- Rate limiting and DDoS protection
+- Secure headers and CORS configuration
+
+## 📊 Monitoring & Maintenance
+
+SiteGuard includes comprehensive monitoring:
+
+- **System Health Monitoring** - CPU, memory, disk usage
+- **Service Monitoring** - All backend services status
+- **Automated Backups** - Daily backups with retention
+- **Log Management** - Centralized logging with rotation
+- **SSL Certificate Monitoring** - Automatic renewal alerts
+
+### Monitoring Commands
+
+```bash
+# System status dashboard
+/usr/local/bin/siteguard-status.sh
+
+# Manual monitoring check
+/usr/local/bin/siteguard-monitor.sh
+
+# Create backup
+/usr/local/bin/siteguard-backup.sh
+
+# Run maintenance
+/usr/local/bin/siteguard-maintenance.sh
+```
+
+## 🆘 Support & Troubleshooting
+
+### Common Issues
+
+1. **Services not starting:** Check logs with `pm2 logs`
+2. **Database connection:** Verify Supabase credentials in `.env`
+3. **Camera discovery:** Check network connectivity and ONVIF credentials
+4. **SSL issues:** Run `sudo certbot certificates` to check status
+
+### Getting Help
+
+- Check the [Deployment Guide](DEPLOYMENT_GUIDE.md) for detailed instructions
+- Review service logs: `pm2 logs [service-name]`
+- Monitor system status: `/usr/local/bin/siteguard-status.sh`
+- Check network connectivity and firewall settings
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
+
+---
+
+**SiteGuard** - Securing your sites with advanced surveillance technology 🛡️
