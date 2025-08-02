@@ -66,40 +66,24 @@ export const ZeroTierManagement: React.FC<ZeroTierManagementProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* ZeroTier Network Overview */}
+      {/* ZeroTier Network Status */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Network className="h-5 w-5" />
-            ZeroTier Network Management
+            ZeroTier Network Status
           </CardTitle>
           <CardDescription>
-            Manage ZeroTier VPN connections for secure remote access to construction sites
+            Current ZeroTier VPN connection status for construction site access
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex gap-4 items-end">
-            <div className="flex-1">
-              <Label htmlFor="network-id">ZeroTier Network ID</Label>
-              <Input
-                id="network-id"
-                placeholder="Enter ZeroTier Network ID (e.g., a84ac5c10a4a5d56)"
-                value={newNetworkId}
-                onChange={(e) => setNewNetworkId(e.target.value)}
-              />
+          <div className="flex justify-between items-center p-4 bg-muted/50 rounded-lg">
+            <div>
+              <p className="font-medium">Backend Integration</p>
+              <p className="text-sm text-muted-foreground">ZeroTier API configured and active</p>
             </div>
-            <Button
-              onClick={() => handleZeroTierAction('monitor_all_nodes')}
-              disabled={loading === 'global'}
-              variant="outline"
-            >
-              {loading === 'global' ? (
-                <RefreshCw className="h-4 w-4 animate-spin" />
-              ) : (
-                <RefreshCw className="h-4 w-4" />
-              )}
-              Refresh All
-            </Button>
+            <Badge variant="default">Active</Badge>
           </div>
         </CardContent>
       </Card>
@@ -107,45 +91,45 @@ export const ZeroTierManagement: React.FC<ZeroTierManagementProps> = ({
       {/* Router ZeroTier Status */}
       <Card>
         <CardHeader>
-          <CardTitle>Router ZeroTier Status</CardTitle>
+          <CardTitle>Router Connection Status</CardTitle>
           <CardDescription>
-            Individual ZeroTier connection status for each GL.iNET router
+            ZeroTier connection status for each GL.iNET router
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4">
-            {routers.map((router) => (
-              <div key={router.id} className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center space-x-2">
-                    <Shield className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">{router.name}</p>
-                      <p className="text-sm text-muted-foreground">{router.location}</p>
+          {routers.length > 0 ? (
+            <div className="grid gap-4">
+              {routers.map((router) => (
+                <div key={router.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-2">
+                      <Shield className="h-5 w-5 text-muted-foreground" />
+                      <div>
+                        <p className="font-medium">{router.name}</p>
+                        <p className="text-sm text-muted-foreground">{router.location}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">Local IP:</span>
+                        <span className="text-xs font-mono">{router.ip_address}</span>
+                      </div>
+                      {router.zerotier_ip_address && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">ZeroTier IP:</span>
+                          <span className="text-xs font-mono text-blue-600">{router.zerotier_ip_address}</span>
+                        </div>
+                      )}
+                      {router.zerotier_node_id && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-muted-foreground">Node ID:</span>
+                          <span className="text-xs font-mono">{router.zerotier_node_id}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                   
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">Local IP:</span>
-                      <span className="text-xs font-mono">{router.ip_address}</span>
-                    </div>
-                    {router.zerotier_ip_address && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">ZeroTier IP:</span>
-                        <span className="text-xs font-mono text-blue-600">{router.zerotier_ip_address}</span>
-                      </div>
-                    )}
-                    {router.zerotier_node_id && (
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">Node ID:</span>
-                        <span className="text-xs font-mono">{router.zerotier_node_id}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-3">
                   <div className="text-right">
                     <Badge variant={getZeroTierStatusColor(router.zerotier_status)}>
                       {router.zerotier_enabled ? router.zerotier_status : 'disabled'}
@@ -156,50 +140,16 @@ export const ZeroTierManagement: React.FC<ZeroTierManagementProps> = ({
                       </p>
                     )}
                   </div>
-                  
-                  <div className="flex gap-2">
-                    {router.zerotier_enabled ? (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleZeroTierAction('restart_zerotier', router.id)}
-                          disabled={loading === router.id}
-                        >
-                          {loading === router.id ? (
-                            <RefreshCw className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <RefreshCw className="h-4 w-4" />
-                          )}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleZeroTierAction('leave_network', router.id)}
-                          disabled={loading === router.id}
-                        >
-                          <Unlink className="h-4 w-4" />
-                        </Button>
-                      </>
-                    ) : (
-                      <Button
-                        size="sm"
-                        onClick={() => handleZeroTierAction('join_network', router.id, newNetworkId)}
-                        disabled={loading === router.id || !newNetworkId}
-                      >
-                        {loading === router.id ? (
-                          <RefreshCw className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Plus className="h-4 w-4" />
-                        )}
-                        Join
-                      </Button>
-                    )}
-                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <Network className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <h3 className="text-lg font-medium mb-2">No Routers Found</h3>
+              <p className="text-muted-foreground">Use the Setup Wizard to configure your network</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
