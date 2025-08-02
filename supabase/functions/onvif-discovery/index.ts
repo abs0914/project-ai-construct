@@ -249,6 +249,9 @@ async function simulateConfiguration(supabaseClient: any, deviceId: string, cred
   console.log(`Simulating configuration for device: ${deviceId}`);
   
   try {
+    // Find the camera by extracting IP from deviceId or matching pattern
+    const deviceIP = deviceId.includes('sim-') ? deviceId.replace('sim-', '') : deviceId;
+    
     // Update the camera in the database to mark it as configured
     const { error } = await supabaseClient
       .from('cameras')
@@ -257,9 +260,10 @@ async function simulateConfiguration(supabaseClient: any, deviceId: string, cred
         username: credentials.username,
         last_seen: new Date().toISOString()
       })
-      .eq('ip_address', deviceId.replace('sim-', ''));
+      .eq('ip_address', deviceIP);
 
     if (error) {
+      console.error('Database update error:', error);
       throw error;
     }
 
