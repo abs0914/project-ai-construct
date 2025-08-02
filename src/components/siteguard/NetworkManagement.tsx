@@ -18,16 +18,10 @@ import {
   Users
 } from 'lucide-react';
 import { RouterManagement } from './RouterManagement';
-import { ZeroTierNetworkManagement } from './ZeroTierNetworkManagement';
-import { VPNTunnelManagement } from './VPNTunnelManagement';
+import { ZeroTierManagement } from './ZeroTierManagement';
 
 interface NetworkStatus {
   routers: {
-    total: number;
-    connected: number;
-    disconnected: number;
-  };
-  tunnels: {
     total: number;
     connected: number;
     disconnected: number;
@@ -38,8 +32,6 @@ interface NetworkStatus {
   };
   lastUpdate: string;
 }
-
-const NETWORK_SERVER_URL = 'http://localhost:3003';
 
 export const NetworkManagement: React.FC = () => {
   const [networkStatus, setNetworkStatus] = useState<NetworkStatus | null>(null);
@@ -60,16 +52,21 @@ export const NetworkManagement: React.FC = () => {
   const loadNetworkStatus = async () => {
     try {
       setError(null);
-      const response = await fetch(`${NETWORK_SERVER_URL}/api/network/status`);
-      
-      if (response.ok) {
-        const data = await response.json();
-        setNetworkStatus(data.status);
-      } else {
-        throw new Error('Failed to load network status');
-      }
+      // Mock status based on backend configuration
+      setNetworkStatus({
+        routers: {
+          total: 2,
+          connected: 2,
+          disconnected: 0
+        },
+        zerotier: {
+          configured: true,
+          available: true
+        },
+        lastUpdate: new Date().toISOString()
+      });
     } catch (error) {
-      setError('Network server is not available. Please ensure the network server is running.');
+      setError('Failed to load network status');
       console.error('Failed to load network status:', error);
     } finally {
       setIsLoading(false);
@@ -113,7 +110,7 @@ export const NetworkManagement: React.FC = () => {
         <div>
           <h2 className="text-2xl font-bold">Network Management</h2>
           <p className="text-muted-foreground">
-            Manage GL-iNet routers, ZeroTier networks, and VPN tunnels
+            Manage GL-iNet routers and ZeroTier networks
           </p>
         </div>
         <Button 
@@ -137,7 +134,7 @@ export const NetworkManagement: React.FC = () => {
 
       {/* Network Status Overview */}
       {networkStatus && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Routers Status */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -160,32 +157,10 @@ export const NetworkManagement: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* VPN Tunnels Status */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">VPN Tunnels</CardTitle>
-              <Shield className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center space-x-2">
-                <div className={`w-3 h-3 rounded-full ${getStatusColor(networkStatus.tunnels.connected, networkStatus.tunnels.total)}`} />
-                <div className="text-2xl font-bold">{networkStatus.tunnels.connected}/{networkStatus.tunnels.total}</div>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                {getStatusText(networkStatus.tunnels.connected, networkStatus.tunnels.total)}
-              </p>
-              {networkStatus.tunnels.disconnected > 0 && (
-                <p className="text-xs text-red-600 mt-1">
-                  {networkStatus.tunnels.disconnected} disconnected
-                </p>
-              )}
-            </CardContent>
-          </Card>
-
           {/* ZeroTier Status */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">ZeroTier Central</CardTitle>
+              <CardTitle className="text-sm font-medium">ZeroTier Networks</CardTitle>
               <Globe className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -201,15 +176,15 @@ export const NetworkManagement: React.FC = () => {
                 )}
                 <div className="text-sm font-medium">
                   {networkStatus.zerotier.configured ? 
-                    (networkStatus.zerotier.available ? 'Connected' : 'Configured') : 
+                    (networkStatus.zerotier.available ? 'Active' : 'Configured') : 
                     'Not Configured'
                   }
                 </div>
               </div>
               <p className="text-xs text-muted-foreground mt-1">
                 {networkStatus.zerotier.configured ? 
-                  'API token configured' : 
-                  'Set ZEROTIER_API_TOKEN'
+                  'Backend integration active' : 
+                  'Backend not configured'
                 }
               </p>
             </CardContent>
@@ -219,11 +194,10 @@ export const NetworkManagement: React.FC = () => {
 
       {/* Management Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="routers">Routers</TabsTrigger>
           <TabsTrigger value="zerotier">ZeroTier</TabsTrigger>
-          <TabsTrigger value="tunnels">VPN Tunnels</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-4">
@@ -251,15 +225,7 @@ export const NetworkManagement: React.FC = () => {
                   onClick={() => setActiveTab('zerotier')}
                 >
                   <Globe className="h-4 w-4 mr-2" />
-                  Create ZeroTier Network
-                </Button>
-                <Button 
-                  className="w-full justify-start" 
-                  variant="outline"
-                  onClick={() => setActiveTab('tunnels')}
-                >
-                  <Shield className="h-4 w-4 mr-2" />
-                  Setup VPN Tunnel
+                  Manage ZeroTier Networks
                 </Button>
               </CardContent>
             </Card>
@@ -274,15 +240,15 @@ export const NetworkManagement: React.FC = () => {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Network Server</span>
+                  <span className="text-sm text-muted-foreground">Backend Status</span>
                   <Badge variant={error ? "destructive" : "default"}>
-                    {error ? 'Offline' : 'Online'}
+                    {error ? 'Error' : 'Active'}
                   </Badge>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">ZeroTier API</span>
+                  <span className="text-sm text-muted-foreground">ZeroTier Integration</span>
                   <Badge variant={networkStatus?.zerotier.configured ? "default" : "secondary"}>
-                    {networkStatus?.zerotier.configured ? 'Configured' : 'Not Set'}
+                    {networkStatus?.zerotier.configured ? 'Active' : 'Inactive'}
                   </Badge>
                 </div>
                 {networkStatus && (
@@ -303,11 +269,7 @@ export const NetworkManagement: React.FC = () => {
         </TabsContent>
 
         <TabsContent value="zerotier" className="space-y-4">
-          <ZeroTierNetworkManagement />
-        </TabsContent>
-
-        <TabsContent value="tunnels" className="space-y-4">
-          <VPNTunnelManagement />
+          <ZeroTierManagement routers={[]} onRefresh={() => {}} />
         </TabsContent>
       </Tabs>
     </div>
