@@ -27,14 +27,17 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
     )
 
-    const { action, network_range, deviceId, credentials } = await req.json();
+    const { action, network_range, networkRange, deviceId, credentials } = await req.json();
 
     console.log(`ONVIF action: ${action}`);
+
+    // Use either parameter name for backward compatibility
+    const range = network_range || networkRange;
 
     let result;
     switch (action) {
       case 'discover':
-        result = await performDiscovery(supabaseClient, network_range);
+        result = await performDiscovery(supabaseClient, range);
         break;
       case 'configure':
         result = await configureDevice(supabaseClient, deviceId, credentials);
@@ -44,7 +47,7 @@ serve(async (req) => {
         break;
       default:
         // Fallback to legacy discovery for backward compatibility
-        result = await performDiscovery(supabaseClient, network_range || '192.168.1.0/24');
+        result = await performDiscovery(supabaseClient, range || '192.168.8.0/24');
     }
 
     return new Response(
@@ -101,7 +104,7 @@ async function performDiscovery(supabaseClient: any, networkRange?: string) {
   }
 
   // Fallback to simulation
-  return await simulateDiscovery(supabaseClient, networkRange || '192.168.1.0/24');
+  return await simulateDiscovery(supabaseClient, networkRange || '192.168.8.0/24');
 }
 
 async function configureDevice(supabaseClient: any, deviceId: string, credentials: any) {
