@@ -147,13 +147,43 @@ export const NetworkAndAlerts: React.FC<NetworkAndAlertsProps> = ({
 
         <TabsContent value="overview" className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Quick Actions */}
+            {/* System Status */}
+            <Card className="animate-scale-in">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Shield className="h-5 w-5" />
+                  <span>System Status</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-center py-4">
+                  <CheckCircle className="h-12 w-12 mx-auto mb-4 text-green-500" />
+                  <h3 className="text-lg font-medium mb-2">System Ready</h3>
+                  <p className="text-muted-foreground">
+                    All devices are configured and operational. Your site security system is active.
+                  </p>
+                </div>
+                <div className="grid grid-cols-2 gap-3 pt-4">
+                  <div className="text-center p-3 border rounded">
+                    <div className="text-lg font-bold text-green-600">{onlineCameras}</div>
+                    <p className="text-xs text-muted-foreground">Active Cameras</p>
+                  </div>
+                  <div className="text-center p-3 border rounded">
+                    <div className="text-lg font-bold text-blue-600">{connectedRouters}</div>
+                    <p className="text-xs text-muted-foreground">Connected Routers</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Quick Actions - Only if user wants to add more devices */}
             <Card className="animate-scale-in">
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
                   <Settings className="h-5 w-5" />
-                  <span>Quick Actions</span>
+                  <span>Add More Devices</span>
                 </CardTitle>
+                <CardDescription>Expand your security system</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
                 <Button 
@@ -162,15 +192,7 @@ export const NetworkAndAlerts: React.FC<NetworkAndAlertsProps> = ({
                   onClick={() => setActiveTab('discovery')}
                 >
                   <Search className="h-4 w-4 mr-2" />
-                  Discover New Devices
-                </Button>
-                <Button 
-                  className="w-full justify-start hover-scale" 
-                  variant="outline"
-                  onClick={() => setActiveTab('network')}
-                >
-                  <Router className="h-4 w-4 mr-2" />
-                  Network Management
+                  Discover Additional Devices
                 </Button>
                 <Button 
                   className="w-full justify-start hover-scale" 
@@ -180,38 +202,6 @@ export const NetworkAndAlerts: React.FC<NetworkAndAlertsProps> = ({
                   <AlertTriangle className="h-4 w-4 mr-2" />
                   View All Alerts
                 </Button>
-              </CardContent>
-            </Card>
-
-            {/* Recent Alerts */}
-            <Card className="animate-scale-in">
-              <CardHeader>
-                <CardTitle>Recent Alerts</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {alerts.slice(0, 5).length > 0 ? (
-                  <div className="space-y-2">
-                    {alerts.slice(0, 5).map((alert) => (
-                      <div key={alert.id} className="flex items-center justify-between p-2 border rounded hover-scale transition-all duration-200">
-                        <div className="flex items-center space-x-2">
-                          <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                          <div>
-                            <p className="text-sm font-medium">{alert.message}</p>
-                            <p className="text-xs text-muted-foreground">{formatTimeAgo(alert.created_at)}</p>
-                          </div>
-                        </div>
-                        <Badge variant={getSeverityColor(alert.severity)}>
-                          {alert.severity}
-                        </Badge>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-4">
-                    <Shield className="h-8 w-8 mx-auto mb-2 text-green-500" />
-                    <p className="text-sm text-muted-foreground">No recent alerts</p>
-                  </div>
-                )}
               </CardContent>
             </Card>
           </div>

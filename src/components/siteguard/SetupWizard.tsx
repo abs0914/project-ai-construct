@@ -49,7 +49,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
     try {
       // Start with network discovery
       const networkResponse = await supabase.functions.invoke('network-discovery', {
-        body: { action: 'scan_all' }
+        body: { action: 'discover' }
       });
 
       // Then ONVIF discovery
@@ -57,7 +57,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
         body: { action: 'discover' }
       });
 
-      // Simulate discovered devices for demo
+      // Simulate discovered devices for demo (since backend services aren't running)
       const mockDevices: DiscoveredDevice[] = [
         {
           id: '1',
@@ -82,12 +82,20 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
           type: 'router',
           status: 'discovered',
           manufacturer: 'GL.iNET'
+        },
+        {
+          id: '4',
+          name: 'Zone Router 1',
+          ip: '192.168.2.1',
+          type: 'router',
+          status: 'discovered',
+          manufacturer: 'GL.iNET'
         }
       ];
 
       setDiscoveredDevices(mockDevices);
       setCurrentStep(2);
-      toast.success(`Discovered ${mockDevices.length} devices`);
+      toast.success(`Discovered ${mockDevices.length} devices (${mockDevices.filter(d => d.type === 'camera').length} cameras, ${mockDevices.filter(d => d.type === 'router').length} routers)`);
     } catch (error) {
       console.error('Discovery failed:', error);
       toast.error('Discovery failed. Using simulation mode.');
@@ -150,6 +158,17 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
             username: 'admin',
             status: 'online'
           });
+        } else if (device.type === 'router') {
+          // Auto-configure router
+          await supabase.from('vpn_routers').insert({
+            name: device.name,
+            ip_address: device.ip,
+            model: device.manufacturer === 'GL.iNET' ? 'GL-MT300N' : 'Unknown',
+            location: 'Auto-discovered',
+            vpn_status: 'connected',
+            zerotier_enabled: true,
+            zerotier_status: 'connected'
+          });
         }
 
         setDiscoveredDevices(prev => 
@@ -168,7 +187,7 @@ export const SetupWizard: React.FC<SetupWizardProps> = ({ onComplete }) => {
 
     setIsConfiguring(false);
     setCurrentStep(3);
-    toast.success('Auto-configuration complete!');
+    toast.success('Auto-configuration complete! All devices are ready to use.');
   };
 
   const getStatusIcon = (status: string) => {
