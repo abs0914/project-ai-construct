@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { supabase } from "@/integrations/supabase/client";
 import { 
   Search, 
   Camera, 
@@ -48,8 +49,6 @@ interface ONVIFDevice {
   lastError?: string;
 }
 
-const ONVIF_SERVER_URL = 'http://localhost:3002';
-
 export const ONVIFDiscovery: React.FC = () => {
   const [devices, setDevices] = useState<ONVIFDevice[]>([]);
   const [isDiscovering, setIsDiscovering] = useState(false);
@@ -66,11 +65,16 @@ export const ONVIFDiscovery: React.FC = () => {
 
   const loadDevices = async () => {
     try {
-      const response = await fetch(`${ONVIF_SERVER_URL}/api/onvif/devices`);
-      if (response.ok) {
-        const data = await response.json();
-        setDevices(data.devices);
+      const { data, error } = await supabase.functions.invoke('onvif-discovery', {
+        body: { action: 'get_devices' }
+      });
+      
+      if (error) {
+        console.error('Failed to load devices:', error);
+        return;
       }
+      
+      setDevices(data?.devices || []);
     } catch (error) {
       console.error('Failed to load devices:', error);
     }
@@ -82,19 +86,18 @@ export const ONVIFDiscovery: React.FC = () => {
     setSuccess(null);
 
     try {
-      const response = await fetch(`${ONVIF_SERVER_URL}/api/onvif/discover`, {
-        method: 'POST'
+      const { data, error } = await supabase.functions.invoke('onvif-discovery', {
+        body: { action: 'discover', networkRange: '192.168.8.0/24' }
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        setDevices(data.devices);
-        setSuccess(`Discovery completed. Found ${data.devices.length} devices.`);
-      } else {
-        throw new Error('Discovery failed');
+      if (error) {
+        throw new Error(error.message || 'Discovery failed');
       }
+
+      setDevices(data?.devices || []);
+      setSuccess(`Discovery completed. Found ${data?.devices?.length || 0} devices.`);
     } catch (error) {
-      setError('Failed to discover devices. Make sure ONVIF server is running.');
+      setError('Failed to discover devices. Please try again.');
     } finally {
       setIsDiscovering(false);
     }
@@ -110,20 +113,22 @@ export const ONVIFDiscovery: React.FC = () => {
     if (!selectedDevice) return;
 
     try {
-      const response = await fetch(`${ONVIF_SERVER_URL}/api/onvif/devices/${selectedDevice.id}/configure`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(credentials)
+      const { data, error } = await supabase.functions.invoke('onvif-discovery', {
+        body: { 
+          action: 'configure',
+          deviceId: selectedDevice.id,
+          credentials
+        }
       });
 
-      if (response.ok) {
-        setSuccess(`Device ${selectedDevice.name} configured successfully`);
-        setConfigDialogOpen(false);
-        await loadDevices();
-      } else {
-        const data = await response.json();
-        setError(data.error || 'Configuration failed');
+      if (error) {
+        setError(error.message || 'Configuration failed');
+        return;
       }
+
+      setSuccess(`Device ${selectedDevice.name} configured successfully`);
+      setConfigDialogOpen(false);
+      await loadDevices();
     } catch (error) {
       setError('Failed to configure device');
     }
@@ -131,16 +136,20 @@ export const ONVIFDiscovery: React.FC = () => {
 
   const removeDevice = async (deviceId: string) => {
     try {
-      const response = await fetch(`${ONVIF_SERVER_URL}/api/onvif/devices/${deviceId}`, {
-        method: 'DELETE'
+      const { data, error } = await supabase.functions.invoke('onvif-discovery', {
+        body: { 
+          action: 'remove_device',
+          deviceId
+        }
       });
 
-      if (response.ok) {
-        setSuccess('Device removed successfully');
-        await loadDevices();
-      } else {
+      if (error) {
         setError('Failed to remove device');
+        return;
       }
+
+      setSuccess('Device removed successfully');
+      await loadDevices();
     } catch (error) {
       setError('Failed to remove device');
     }
@@ -148,16 +157,20 @@ export const ONVIFDiscovery: React.FC = () => {
 
   const rebootDevice = async (deviceId: string) => {
     try {
-      const response = await fetch(`${ONVIF_SERVER_URL}/api/onvif/devices/${deviceId}/reboot`, {
-        method: 'POST'
+      const { data, error } = await supabase.functions.invoke('onvif-discovery', {
+        body: { 
+          action: 'reboot_device',
+          deviceId
+        }
       });
 
-      if (response.ok) {
-        setSuccess('Device reboot initiated');
-        await loadDevices();
-      } else {
+      if (error) {
         setError('Failed to reboot device');
+        return;
       }
+
+      setSuccess('Device reboot initiated');
+      await loadDevices();
     } catch (error) {
       setError('Failed to reboot device');
     }
