@@ -96,7 +96,7 @@ export class HLSClient {
 
     console.log('Using HLS.js');
 
-    const hlsConfig: Partial<Hls.Config> = {
+    const hlsConfig: Partial<typeof Hls.DefaultConfig> = {
       maxBufferLength: this.config.maxBufferLength || 30,
       maxBufferSize: this.config.maxBufferSize || 60 * 1000 * 1000, // 60MB
       enableWorker: true,
