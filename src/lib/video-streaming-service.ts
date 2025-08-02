@@ -1,6 +1,7 @@
 import { WebRTCClient, StreamConfig as WebRTCConfig, StreamStats as WebRTCStats } from './webrtc-client';
 import { HLSClient, HLSConfig, HLSStats } from './hls-client';
 import { MockVideoService, MockStreamStats } from './mock-video-service';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface StreamingConfig {
   cameraId: string;
@@ -32,8 +33,8 @@ export class VideoStreamingService {
   private currentProtocol: StreamingProtocol | null = null;
   private config: StreamingConfig;
   private videoElement: HTMLVideoElement | null = null;
-  private mediaServerUrl = import.meta.env.VITE_MEDIA_SERVER_URL || 'https://api.aiconstructpro.com/api/media';
-  private isDevelopmentMode = import.meta.env.DEV;
+  private mediaServerUrl = 'https://aooppgijnjxbsylvwukx.supabase.co/functions/v1/video-streaming';
+  private isDevelopmentMode = false; // Always use production mode now
   
   // Event callbacks
   private onStatsCallback?: (stats: UnifiedStreamStats) => void;
@@ -77,24 +78,24 @@ export class VideoStreamingService {
   }
 
   private async startMediaServerStream(): Promise<{ webrtcUrl: string; hlsUrl: string }> {
-    const response = await fetch(`${this.mediaServerUrl}/api/streams/${this.config.cameraId}/start`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+    const { data, error } = await supabase.functions.invoke('video-streaming', {
+      body: {
+        action: 'start',
+        cameraId: this.config.cameraId,
         rtspUrl: this.config.rtspUrl,
         username: this.config.username,
         password: this.config.password,
-      }),
+      },
     });
 
-    if (!response.ok) {
-      throw new Error(`Media server error: ${response.statusText}`);
+    if (error || !data?.success) {
+      throw new Error(`Video streaming error: ${error?.message || data?.error || 'Unknown error'}`);
     }
 
-    const data = await response.json();
-    return data.urls;
+    return {
+      hlsUrl: data.urls?.hls || '',
+      webrtcUrl: data.urls?.webrtc || ''
+    };
   }
 
   private async selectOptimalProtocol(): Promise<StreamingProtocol> {
@@ -372,8 +373,11 @@ export class VideoStreamingService {
     // Stop the stream on the media server (only if not in mock mode)
     if (this.currentProtocol !== 'mock') {
       try {
-        await fetch(`${this.mediaServerUrl}/api/streams/camera_${this.config.cameraId}/stop`, {
-          method: 'POST',
+        await supabase.functions.invoke('video-streaming', {
+          body: {
+            action: 'stop',
+            cameraId: this.config.cameraId,
+          },
         });
       } catch (error) {
         console.error('Error stopping media server stream:', error);
