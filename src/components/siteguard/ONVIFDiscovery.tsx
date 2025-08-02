@@ -74,7 +74,24 @@ export const ONVIFDiscovery: React.FC = () => {
         return;
       }
       
-      setDevices(data?.devices || []);
+      // Ensure devices have all required properties with defaults
+      const devicesWithDefaults = (data?.devices || []).map((device: any) => ({
+        ...device,
+        id: device.id || `${device.ip}-${device.port}`,
+        status: device.status || 'discovered',
+        configured: device.configured || false,
+        capabilities: device.capabilities || {
+          media: false,
+          ptz: false,
+          imaging: false,
+          events: false,
+          analytics: false
+        },
+        profiles: device.profiles || [],
+        lastSeen: device.lastSeen || new Date().toISOString()
+      }));
+      
+      setDevices(devicesWithDefaults);
     } catch (error) {
       console.error('Failed to load devices:', error);
     }
@@ -94,8 +111,26 @@ export const ONVIFDiscovery: React.FC = () => {
         throw new Error(error.message || 'Discovery failed');
       }
 
-      setDevices(data?.devices || []);
-      setSuccess(`Discovery completed. Found ${data?.devices?.length || 0} devices.`);
+      // Ensure devices have all required properties with defaults
+      const devicesWithDefaults = (data?.devices || []).map((device: any) => ({
+        ...device,
+        id: device.id || `${device.ip}-${device.port}`,
+        type: device.type || 'camera',
+        status: device.status || 'discovered',
+        configured: device.configured || false,
+        capabilities: device.capabilities || {
+          media: false,
+          ptz: false,
+          imaging: false,
+          events: false,
+          analytics: false
+        },
+        profiles: device.profiles || [],
+        lastSeen: device.lastSeen || new Date().toISOString()
+      }));
+
+      setDevices(devicesWithDefaults);
+      setSuccess(`Discovery completed. Found ${devicesWithDefaults.length} devices.`);
     } catch (error) {
       setError('Failed to discover devices. Please try again.');
     } finally {
