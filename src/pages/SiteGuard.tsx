@@ -15,6 +15,7 @@ import { SiteGuardAnalytics } from '@/components/siteguard/SiteGuardAnalytics';
 import { ZeroTierManagement } from '@/components/siteguard/ZeroTierManagement';
 import { ONVIFDiscovery } from '@/components/siteguard/ONVIFDiscovery';
 import { NetworkManagement } from '@/components/siteguard/NetworkManagement';
+import { NetworkDiscovery } from '@/components/siteguard/NetworkDiscovery';
 
 const SiteGuard = () => {
   const navigate = useNavigate();
@@ -139,15 +140,16 @@ const SiteGuard = () => {
         </ErrorBoundary>
 
         <Tabs defaultValue="live-feed" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="live-feed">Live Feed</TabsTrigger>
-            <TabsTrigger value="onvif-discovery">ONVIF Discovery</TabsTrigger>
-            <TabsTrigger value="network">Network</TabsTrigger>
-            <TabsTrigger value="alerts">Alerts</TabsTrigger>
-            <TabsTrigger value="personnel">Personnel</TabsTrigger>
-            <TabsTrigger value="zerotier">ZeroTier</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          </TabsList>
+        <TabsList>
+          <TabsTrigger value="live-feed">Live Feed</TabsTrigger>
+          <TabsTrigger value="network-discovery">Network Discovery</TabsTrigger>
+          <TabsTrigger value="onvif-discovery">ONVIF Discovery</TabsTrigger>
+          <TabsTrigger value="network">Network</TabsTrigger>
+          <TabsTrigger value="alerts">Alerts</TabsTrigger>
+          <TabsTrigger value="personnel">Personnel</TabsTrigger>
+          <TabsTrigger value="zerotier">ZeroTier</TabsTrigger>
+          <TabsTrigger value="analytics">Analytics</TabsTrigger>
+        </TabsList>
 
           <TabsContent value="live-feed" className="space-y-4">
             <ErrorBoundary>
@@ -158,6 +160,18 @@ const SiteGuard = () => {
                 onSelectCamera={setSelectedCamera}
                 onToggleRecording={handleToggleRecording}
                 onRefreshCamera={handleRefreshCamera}
+              />
+            </ErrorBoundary>
+          </TabsContent>
+
+          <TabsContent value="network-discovery" className="space-y-4">
+            <ErrorBoundary>
+              <NetworkDiscovery 
+                routers={routers}
+                onRefresh={() => {
+                  refetch.cameras();
+                  refetch.routers();
+                }}
               />
             </ErrorBoundary>
           </TabsContent>
