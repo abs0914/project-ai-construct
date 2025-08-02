@@ -49,7 +49,11 @@ export const SiteGuardLiveFeed: React.FC<SiteGuardLiveFeedProps> = ({
         </CardHeader>
         <CardContent>
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-            {routers.map((router) => (
+            {routers.filter(router => 
+              router.location === 'Auto-discovered' || 
+              router.location?.includes('Auto-discovered') ||
+              router.vpn_status === 'connected' && router.zerotier_status === 'connected'
+            ).map((router) => (
               <div key={router.id} className="flex items-center justify-between p-3 rounded-lg border">
                 <div className="flex items-center space-x-3">
                   <Wifi className="h-5 w-5 text-muted-foreground" />
