@@ -20,7 +20,11 @@
     "test:streaming": "node media-server/test-stream.js",
     "test:onvif": "node onvif-server/test-onvif.js",
     "test:network": "node network-server/test-network.js",
-    "test:security": "node security-server/test-security.js"
+    "test:security": "node security-server/test-security.js",
+    "test:frontend": "node test-frontend-integration.js",
+    "test:siteguard": "node test-siteguard-components.js",
+    "test:ui": "node test-ui-components.js",
+    "test:all": "npm run test:frontend && npm run test:siteguard && npm run test:ui && npm run test:streaming && npm run test:onvif && npm run test:network && npm run test:security"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",

@@ -20,6 +20,7 @@ import Budgets from "@/pages/Budgets";
 import SiteGuard from "@/pages/SiteGuard";
 import SiteGuardSettings from "@/pages/SiteGuardSettings";
 import AIChatbot from "@/pages/AIChatbot";
+import IntegrationTest from "@/pages/IntegrationTest";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -48,6 +49,7 @@ const App = () => (
             <Route path="/siteguard" element={<SiteGuard />} />
             <Route path="/siteguard/settings" element={<SiteGuardSettings />} />
             <Route path="/chatbot" element={<AIChatbot />} />
+            <Route path="/integration-test" element={<IntegrationTest />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AppLayout>
