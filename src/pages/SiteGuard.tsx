@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Settings, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useSiteGuardData } from '@/hooks/useSiteGuardData';
+import { ErrorBoundary, SiteGuardErrorFallback } from '@/components/ui/error-boundary';
 import { SiteGuardOverview } from '@/components/siteguard/SiteGuardOverview';
 import { SiteGuardLiveFeed } from '@/components/siteguard/SiteGuardLiveFeed';
 import { SiteGuardAlerts } from '@/components/siteguard/SiteGuardAlerts';
@@ -14,6 +15,7 @@ import { SiteGuardAnalytics } from '@/components/siteguard/SiteGuardAnalytics';
 import { ZeroTierManagement } from '@/components/siteguard/ZeroTierManagement';
 import { ONVIFDiscovery } from '@/components/siteguard/ONVIFDiscovery';
 import { NetworkManagement } from '@/components/siteguard/NetworkManagement';
+import { NetworkDiscovery } from '@/components/siteguard/NetworkDiscovery';
 
 const SiteGuard = () => {
   const navigate = useNavigate();
@@ -107,36 +109,40 @@ const SiteGuard = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">SiteGuard</h1>
-          <p className="text-muted-foreground">
-            Construction site monitoring and security system
-          </p>
+    <ErrorBoundary fallback={SiteGuardErrorFallback}>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">SiteGuard</h1>
+            <p className="text-muted-foreground">
+              Construction site monitoring and security system
+            </p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <Badge variant={alerts.length > 0 ? "destructive" : "secondary"}>
+              {alerts.length} Active Alerts
+            </Badge>
+            <Button onClick={() => navigate('/siteguard/settings')}>
+              <Settings className="mr-2 h-4 w-4" />
+              Settings
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center space-x-2">
-          <Badge variant={alerts.length > 0 ? "destructive" : "secondary"}>
-            {alerts.length} Active Alerts
-          </Badge>
-          <Button onClick={() => navigate('/siteguard/settings')}>
-            <Settings className="mr-2 h-4 w-4" />
-            Settings
-          </Button>
-        </div>
-      </div>
 
-      {/* Overview Cards */}
-      <SiteGuardOverview 
-        cameras={cameras}
-        routers={routers}
-        alerts={alerts}
-        personnel={personnel}
-      />
+        {/* Overview Cards */}
+        <ErrorBoundary>
+          <SiteGuardOverview 
+            cameras={cameras}
+            routers={routers}
+            alerts={alerts}
+            personnel={personnel}
+          />
+        </ErrorBoundary>
 
-      <Tabs defaultValue="live-feed" className="space-y-4">
+        <Tabs defaultValue="live-feed" className="space-y-4">
         <TabsList>
           <TabsTrigger value="live-feed">Live Feed</TabsTrigger>
+          <TabsTrigger value="network-discovery">Network Discovery</TabsTrigger>
           <TabsTrigger value="onvif-discovery">ONVIF Discovery</TabsTrigger>
           <TabsTrigger value="network">Network</TabsTrigger>
           <TabsTrigger value="alerts">Alerts</TabsTrigger>
@@ -145,58 +151,85 @@ const SiteGuard = () => {
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="live-feed" className="space-y-4">
-          <SiteGuardLiveFeed
-            cameras={cameras}
-            routers={routers}
-            selectedCamera={selectedCamera}
-            onSelectCamera={setSelectedCamera}
-            onToggleRecording={handleToggleRecording}
-            onRefreshCamera={handleRefreshCamera}
-          />
-        </TabsContent>
+          <TabsContent value="live-feed" className="space-y-4">
+            <ErrorBoundary>
+              <SiteGuardLiveFeed
+                cameras={cameras}
+                routers={routers}
+                selectedCamera={selectedCamera}
+                onSelectCamera={setSelectedCamera}
+                onToggleRecording={handleToggleRecording}
+                onRefreshCamera={handleRefreshCamera}
+              />
+            </ErrorBoundary>
+          </TabsContent>
 
-        <TabsContent value="onvif-discovery" className="space-y-4">
-          <ONVIFDiscovery />
-        </TabsContent>
+          <TabsContent value="network-discovery" className="space-y-4">
+            <ErrorBoundary>
+              <NetworkDiscovery 
+                routers={routers}
+                onRefresh={() => {
+                  refetch.cameras();
+                  refetch.routers();
+                }}
+              />
+            </ErrorBoundary>
+          </TabsContent>
 
-        <TabsContent value="network" className="space-y-4">
-          <NetworkManagement />
-        </TabsContent>
+          <TabsContent value="onvif-discovery" className="space-y-4">
+            <ErrorBoundary>
+              <ONVIFDiscovery />
+            </ErrorBoundary>
+          </TabsContent>
 
-        <TabsContent value="alerts" className="space-y-4">
-          <SiteGuardAlerts
-            alerts={alerts}
-            onResolveAlert={handleResolveAlert}
-          />
-        </TabsContent>
+          <TabsContent value="network" className="space-y-4">
+            <ErrorBoundary>
+              <NetworkManagement />
+            </ErrorBoundary>
+          </TabsContent>
 
-        <TabsContent value="personnel" className="space-y-4">
-          <SiteGuardPersonnel personnel={personnel} />
-        </TabsContent>
+          <TabsContent value="alerts" className="space-y-4">
+            <ErrorBoundary>
+              <SiteGuardAlerts
+                alerts={alerts}
+                onResolveAlert={handleResolveAlert}
+              />
+            </ErrorBoundary>
+          </TabsContent>
 
-        <TabsContent value="zerotier" className="space-y-4">
-          <ZeroTierManagement 
-            routers={routers} 
-            onRefresh={() => {
-              refetch.cameras();
-              refetch.routers();
-              refetch.alerts();
-              refetch.personnel();
-            }}
-          />
-        </TabsContent>
+          <TabsContent value="personnel" className="space-y-4">
+            <ErrorBoundary>
+              <SiteGuardPersonnel personnel={personnel} />
+            </ErrorBoundary>
+          </TabsContent>
 
-        <TabsContent value="analytics" className="space-y-4">
-          <SiteGuardAnalytics
-            cameras={cameras}
-            routers={routers}
-            alerts={alerts}
-            personnel={personnel}
-          />
-        </TabsContent>
-      </Tabs>
-    </div>
+          <TabsContent value="zerotier" className="space-y-4">
+            <ErrorBoundary>
+              <ZeroTierManagement 
+                routers={routers} 
+                onRefresh={() => {
+                  refetch.cameras();
+                  refetch.routers();
+                  refetch.alerts();
+                  refetch.personnel();
+                }}
+              />
+            </ErrorBoundary>
+          </TabsContent>
+
+          <TabsContent value="analytics" className="space-y-4">
+            <ErrorBoundary>
+              <SiteGuardAnalytics
+                cameras={cameras}
+                routers={routers}
+                alerts={alerts}
+                personnel={personnel}
+              />
+            </ErrorBoundary>
+          </TabsContent>
+        </Tabs>
+      </div>
+    </ErrorBoundary>
   );
 };
 

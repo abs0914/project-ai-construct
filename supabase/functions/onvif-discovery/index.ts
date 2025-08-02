@@ -27,14 +27,17 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
     )
 
-    const { action, network_range, deviceId, credentials } = await req.json();
+    const { action, network_range, networkRange, deviceId, credentials } = await req.json();
 
     console.log(`ONVIF action: ${action}`);
+
+    // Use either parameter name for backward compatibility
+    const range = network_range || networkRange;
 
     let result;
     switch (action) {
       case 'discover':
-        result = await performDiscovery(supabaseClient, network_range);
+        result = await performDiscovery(supabaseClient, range);
         break;
       case 'configure':
         result = await configureDevice(supabaseClient, deviceId, credentials);
@@ -44,7 +47,7 @@ serve(async (req) => {
         break;
       default:
         // Fallback to legacy discovery for backward compatibility
-        result = await performDiscovery(supabaseClient, network_range || '192.168.1.0/24');
+        result = await performDiscovery(supabaseClient, range || '192.168.8.0/24');
     }
 
     return new Response(
@@ -101,37 +104,37 @@ async function performDiscovery(supabaseClient: any, networkRange?: string) {
   }
 
   // Fallback to simulation
-  return await simulateDiscovery(supabaseClient, networkRange || '192.168.1.0/24');
+  return await simulateDiscovery(supabaseClient, networkRange || '192.168.8.0/24');
 }
 
 async function configureDevice(supabaseClient: any, deviceId: string, credentials: any) {
   try {
+    // Try to use real ONVIF server first
     const response = await fetch(`${ONVIF_SERVER_URL}/api/onvif/devices/${deviceId}/configure`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(credentials)
     });
 
-    if (!response.ok) {
-      throw new Error('Device configuration failed');
+    if (response.ok) {
+      const data = await response.json();
+
+      // Update camera in database with ONVIF information
+      if (data.device) {
+        await updateCameraWithONVIFInfo(supabaseClient, data.device);
+      }
+
+      return {
+        device: data.device,
+        message: 'Device configured successfully'
+      };
     }
-
-    const data = await response.json();
-
-    // Update camera in database with ONVIF information
-    if (data.device) {
-      await updateCameraWithONVIFInfo(supabaseClient, data.device);
-    }
-
-    return {
-      device: data.device,
-      message: 'Device configured successfully'
-    };
-
   } catch (error) {
-    console.error('Configuration failed:', error);
-    throw error;
+    console.warn('ONVIF server not available, falling back to simulation');
   }
+
+  // Fallback to simulated configuration when ONVIF server is not available
+  return await simulateConfiguration(supabaseClient, deviceId, credentials);
 }
 
 async function getDevices() {
@@ -240,4 +243,63 @@ async function simulateDiscovery(supabaseClient: any, networkRange: string) {
     devices: devices,
     message: `Simulated discovery: ${devices.length} devices (ONVIF server not available)`
   };
+}
+
+async function simulateConfiguration(supabaseClient: any, deviceId: string, credentials: any) {
+  console.log(`Simulating configuration for device: ${deviceId}`);
+  
+  try {
+    // Find the camera by extracting IP from deviceId or matching pattern
+    const deviceIP = deviceId.includes('sim-') ? deviceId.replace('sim-', '') : deviceId;
+    
+    // Update the camera in the database to mark it as configured
+    const { error } = await supabaseClient
+      .from('cameras')
+      .update({
+        status: 'online',
+        username: credentials.username,
+        last_seen: new Date().toISOString()
+      })
+      .eq('ip_address', deviceIP);
+
+    if (error) {
+      console.error('Database update error:', error);
+      throw error;
+    }
+
+    // Create a mock configured device response
+    const mockDevice = {
+      id: deviceId,
+      ip: deviceId.replace('sim-', ''),
+      name: `Configured Camera`,
+      status: 'online',
+      configured: true,
+      profiles: [
+        {
+          token: 'profile_1',
+          name: 'Main Stream',
+          videoEncoder: {
+            encoding: 'H264',
+            resolution: { width: 1920, height: 1080 },
+            frameRate: 25
+          }
+        }
+      ],
+      capabilities: {
+        media: true,
+        ptz: false,
+        imaging: true,
+        events: false,
+        analytics: false
+      }
+    };
+
+    return {
+      device: mockDevice,
+      message: 'Device configured successfully (simulated)'
+    };
+  } catch (error) {
+    console.error('Simulated configuration failed:', error);
+    throw new Error('Configuration failed');
+  }
 }

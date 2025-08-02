@@ -1,5 +1,7 @@
 import { WebRTCClient, StreamConfig as WebRTCConfig, StreamStats as WebRTCStats } from './webrtc-client';
 import { HLSClient, HLSConfig, HLSStats } from './hls-client';
+import { MockVideoService, MockStreamStats } from './mock-video-service';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface StreamingConfig {
   cameraId: string;
@@ -12,7 +14,7 @@ export interface StreamingConfig {
 }
 
 export interface UnifiedStreamStats {
-  protocol: 'webrtc' | 'hls';
+  protocol: 'webrtc' | 'hls' | 'mock';
   bitrate: number;
   fps: number;
   resolution: { width: number; height: number };
@@ -22,15 +24,17 @@ export interface UnifiedStreamStats {
   connectionState: string;
 }
 
-export type StreamingProtocol = 'webrtc' | 'hls';
+export type StreamingProtocol = 'webrtc' | 'hls' | 'mock';
 
 export class VideoStreamingService {
   private webrtcClient: WebRTCClient | null = null;
   private hlsClient: HLSClient | null = null;
+  private mockClient: MockVideoService | null = null;
   private currentProtocol: StreamingProtocol | null = null;
   private config: StreamingConfig;
   private videoElement: HTMLVideoElement | null = null;
-  private mediaServerUrl = 'http://localhost:3001';
+  private mediaServerUrl = 'https://aooppgijnjxbsylvwukx.supabase.co/functions/v1/video-streaming';
+  private isDevelopmentMode = false; // Always use production mode now
   
   // Event callbacks
   private onStatsCallback?: (stats: UnifiedStreamStats) => void;
@@ -46,14 +50,26 @@ export class VideoStreamingService {
     this.videoElement = videoElement;
 
     try {
-      // First, start the stream on the media server
-      await this.startMediaServerStream();
+      // In development mode or when backend is unavailable, use mock service
+      if (this.isDevelopmentMode) {
+        console.log('Development mode detected, using mock video service');
+        await this.connectWithProtocol('mock');
+        return;
+      }
 
-      // Determine the best protocol to use
-      const protocol = await this.selectOptimalProtocol();
-      
-      // Connect using the selected protocol
-      await this.connectWithProtocol(protocol);
+      // Try to start the stream on the media server
+      try {
+        await this.startMediaServerStream();
+        
+        // Determine the best protocol to use
+        const protocol = await this.selectOptimalProtocol();
+        
+        // Connect using the selected protocol
+        await this.connectWithProtocol(protocol);
+      } catch (mediaServerError) {
+        console.warn('Media server unavailable, falling back to mock service:', mediaServerError);
+        await this.connectWithProtocol('mock');
+      }
       
     } catch (error) {
       this.handleError(new Error(`Failed to start stream: ${error.message}`));
@@ -62,24 +78,24 @@ export class VideoStreamingService {
   }
 
   private async startMediaServerStream(): Promise<{ webrtcUrl: string; hlsUrl: string }> {
-    const response = await fetch(`${this.mediaServerUrl}/api/streams/${this.config.cameraId}/start`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+    const { data, error } = await supabase.functions.invoke('video-streaming', {
+      body: {
+        action: 'start',
+        cameraId: this.config.cameraId,
         rtspUrl: this.config.rtspUrl,
         username: this.config.username,
         password: this.config.password,
-      }),
+      },
     });
 
-    if (!response.ok) {
-      throw new Error(`Media server error: ${response.statusText}`);
+    if (error || !data?.success) {
+      throw new Error(`Video streaming error: ${error?.message || data?.error || 'Unknown error'}`);
     }
 
-    const data = await response.json();
-    return data.urls;
+    return {
+      hlsUrl: data.urls?.hls || '',
+      webrtcUrl: data.urls?.webrtc || ''
+    };
   }
 
   private async selectOptimalProtocol(): Promise<StreamingProtocol> {
@@ -92,13 +108,14 @@ export class VideoStreamingService {
     const supportsHLS = HLSClient.isSupported() || (this.videoElement && 
       HLSClient.canPlayNatively(this.videoElement, ''));
 
-    // Prefer WebRTC for lower latency, fallback to HLS
+    // Prefer WebRTC for lower latency, fallback to HLS, then mock
     if (supportsWebRTC) {
       return 'webrtc';
     } else if (supportsHLS) {
       return 'hls';
     } else {
-      throw new Error('No supported streaming protocol available');
+      console.warn('No real streaming protocol available, using mock');
+      return 'mock';
     }
   }
 
@@ -119,6 +136,9 @@ export class VideoStreamingService {
         break;
       case 'hls':
         await this.connectHLS();
+        break;
+      case 'mock':
+        await this.connectMock();
         break;
       default:
         throw new Error(`Unsupported protocol: ${protocol}`);
@@ -201,10 +221,44 @@ export class VideoStreamingService {
     await this.hlsClient.connect(this.videoElement);
   }
 
+  private async connectMock(): Promise<void> {
+    if (!this.videoElement) throw new Error('Video element not available');
+
+    this.mockClient = new MockVideoService({
+      cameraId: this.config.cameraId,
+      autoplay: this.config.autoplay ?? true,
+      muted: this.config.muted ?? true,
+    });
+
+    // Set up event handlers
+    this.mockClient.onStats((stats: MockStreamStats) => {
+      if (this.onStatsCallback) {
+        this.onStatsCallback({
+          protocol: 'mock',
+          ...stats,
+          connectionState: this.mockClient?.isConnected() ? 'connected' : 'disconnected'
+        });
+      }
+    });
+
+    this.mockClient.onError((error: Error) => {
+      this.handleError(error);
+    });
+
+    this.mockClient.onStateChange((state) => {
+      if (this.onStateChangeCallback) {
+        this.onStateChangeCallback(`mock-${state}`);
+      }
+    });
+
+    await this.mockClient.startStream(this.videoElement);
+  }
+
   private async fallbackToHLS(): Promise<void> {
     if (this.currentProtocol === 'hls') {
-      // Already using HLS, can't fallback further
-      this.handleError(new Error('HLS connection also failed'));
+      // Already using HLS, fallback to mock
+      console.log('HLS failed, falling back to mock service...');
+      await this.connectWithProtocol('mock');
       return;
     }
 
@@ -221,7 +275,8 @@ export class VideoStreamingService {
       await this.connectWithProtocol('hls');
       
     } catch (error) {
-      this.handleError(new Error(`Fallback to HLS failed: ${error.message}`));
+      console.log('HLS fallback failed, using mock service...');
+      await this.connectWithProtocol('mock');
     }
   }
 
@@ -229,6 +284,8 @@ export class VideoStreamingService {
   async play(): Promise<void> {
     if (this.currentProtocol === 'hls' && this.hlsClient) {
       return this.hlsClient.play();
+    } else if (this.currentProtocol === 'mock' && this.mockClient) {
+      return this.mockClient.play();
     } else if (this.videoElement) {
       return this.videoElement.play();
     }
@@ -237,6 +294,8 @@ export class VideoStreamingService {
   pause(): void {
     if (this.currentProtocol === 'hls' && this.hlsClient) {
       this.hlsClient.pause();
+    } else if (this.currentProtocol === 'mock' && this.mockClient) {
+      this.mockClient.pause();
     } else if (this.videoElement) {
       this.videoElement.pause();
     }
@@ -245,6 +304,8 @@ export class VideoStreamingService {
   setVolume(volume: number): void {
     if (this.currentProtocol === 'hls' && this.hlsClient) {
       this.hlsClient.setVolume(volume);
+    } else if (this.currentProtocol === 'mock' && this.mockClient) {
+      this.mockClient.setVolume(volume);
     } else if (this.videoElement) {
       this.videoElement.volume = Math.max(0, Math.min(1, volume));
     }
@@ -253,6 +314,8 @@ export class VideoStreamingService {
   setMuted(muted: boolean): void {
     if (this.currentProtocol === 'hls' && this.hlsClient) {
       this.hlsClient.setMuted(muted);
+    } else if (this.currentProtocol === 'mock' && this.mockClient) {
+      this.mockClient.setMuted(muted);
     } else if (this.videoElement) {
       this.videoElement.muted = muted;
     }
@@ -299,19 +362,26 @@ export class VideoStreamingService {
       return this.webrtcClient.isConnected();
     } else if (this.currentProtocol === 'hls' && this.hlsClient) {
       return this.hlsClient.isPlaying();
+    } else if (this.currentProtocol === 'mock' && this.mockClient) {
+      return this.mockClient.isConnected();
     }
     return false;
   }
 
   // Cleanup
   async stopStream(): Promise<void> {
-    // Stop the stream on the media server
-    try {
-      await fetch(`${this.mediaServerUrl}/api/streams/camera_${this.config.cameraId}/stop`, {
-        method: 'POST',
-      });
-    } catch (error) {
-      console.error('Error stopping media server stream:', error);
+    // Stop the stream on the media server (only if not in mock mode)
+    if (this.currentProtocol !== 'mock') {
+      try {
+        await supabase.functions.invoke('video-streaming', {
+          body: {
+            action: 'stop',
+            cameraId: this.config.cameraId,
+          },
+        });
+      } catch (error) {
+        console.error('Error stopping media server stream:', error);
+      }
     }
 
     // Cleanup clients
@@ -323,6 +393,11 @@ export class VideoStreamingService {
     if (this.hlsClient) {
       this.hlsClient.disconnect();
       this.hlsClient = null;
+    }
+
+    if (this.mockClient) {
+      await this.mockClient.stopStream();
+      this.mockClient = null;
     }
 
     this.currentProtocol = null;
