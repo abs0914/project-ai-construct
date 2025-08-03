@@ -21,81 +21,58 @@ import {
   CheckCircle,
   Eye
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
-interface RouterInfo {
+interface VpnRouter {
   id: string;
-  host: string;
-  status: 'connected' | 'disconnected' | 'error';
-  lastSeen: string;
-  retryCount: number;
-  info?: {
-    status?: {
-      uptime: number;
-      load: number[];
-      memory: { total: number; free: number; used: number };
-      temperature: number;
-      firmware: string;
-      model: string;
-    };
-    network?: {
-      wan: { ip: string; status: string };
-      lan: { ip: string };
-    };
-    wireless?: {
-      enabled: boolean;
-      ssid: string;
-      clients: number;
-    };
-    clients?: Array<{
-      mac: string;
-      ip: string;
-      hostname: string;
-    }>;
-    bandwidth?: {
-      wan: { rxRate: number; txRate: number };
-    };
-  };
+  name: string;
+  model: string;
+  ip_address: string;
+  vpn_status: 'connected' | 'disconnected' | 'connecting' | 'error';
+  location: string;
+  bandwidth_usage: number;
+  last_seen?: string;
+  zerotier_status?: 'connected' | 'disconnected' | 'connecting' | 'error';
+  zerotier_ip_address?: string;
+  zerotier_enabled?: boolean;
 }
 
-const NETWORK_SERVER_URL = 'http://localhost:3003';
-
 export const RouterManagement: React.FC = () => {
-  const [routers, setRouters] = useState<RouterInfo[]>([]);
+  const [routers, setRouters] = useState<VpnRouter[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [selectedRouter, setSelectedRouter] = useState<RouterInfo | null>(null);
+  const [selectedRouter, setSelectedRouter] = useState<VpnRouter | null>(null);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const { toast } = useToast();
   
   // Form state for adding router
   const [routerForm, setRouterForm] = useState({
-    routerId: '',
-    host: '',
-    username: 'root',
-    password: ''
+    name: '',
+    ip_address: '',
+    model: 'GL-MT300N',
+    location: ''
   });
 
   useEffect(() => {
     loadRouters();
-    
-    // Set up periodic refresh
-    const interval = setInterval(loadRouters, 30000);
-    return () => clearInterval(interval);
   }, []);
 
   const loadRouters = async () => {
     try {
       setError(null);
-      const response = await fetch(`${NETWORK_SERVER_URL}/api/network/routers`);
+      setIsLoading(true);
       
-      if (response.ok) {
-        const data = await response.json();
-        setRouters(data.routers);
-      } else {
-        throw new Error('Failed to load routers');
-      }
+      const { data, error } = await supabase
+        .from('vpn_routers')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      if (error) throw error;
+      setRouters((data as VpnRouter[]) || []);
     } catch (error) {
-      setError('Failed to load routers. Please ensure the network server is running.');
+      setError('Failed to load routers from database.');
       console.error('Failed to load routers:', error);
     } finally {
       setIsLoading(false);
@@ -104,42 +81,61 @@ export const RouterManagement: React.FC = () => {
 
   const addRouter = async () => {
     try {
-      const response = await fetch(`${NETWORK_SERVER_URL}/api/network/routers`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(routerForm)
+      const { error } = await supabase
+        .from('vpn_routers')
+        .insert({
+          name: routerForm.name,
+          ip_address: routerForm.ip_address,
+          model: routerForm.model,
+          location: routerForm.location,
+          vpn_status: 'disconnected',
+          bandwidth_usage: 0
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Router Added",
+        description: `${routerForm.name} has been added successfully`,
       });
 
-      if (response.ok) {
-        setAddDialogOpen(false);
-        setRouterForm({ routerId: '', host: '', username: 'root', password: '' });
-        await loadRouters();
-      } else {
-        const data = await response.json();
-        setError(data.error || 'Failed to add router');
-      }
+      setAddDialogOpen(false);
+      setRouterForm({ name: '', ip_address: '', model: 'GL-MT300N', location: '' });
+      await loadRouters();
     } catch (error) {
-      setError('Failed to add router');
+      toast({
+        title: "Failed to Add Router",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
   const removeRouter = async (routerId: string) => {
     try {
-      const response = await fetch(`${NETWORK_SERVER_URL}/api/network/routers/${routerId}`, {
-        method: 'DELETE'
+      const { error } = await supabase
+        .from('vpn_routers')
+        .delete()
+        .eq('id', routerId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Router Removed",
+        description: "Router has been removed successfully",
       });
 
-      if (response.ok) {
-        await loadRouters();
-      } else {
-        setError('Failed to remove router');
-      }
+      await loadRouters();
     } catch (error) {
-      setError('Failed to remove router');
+      toast({
+        title: "Failed to Remove Router",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
-  const showRouterDetails = (router: RouterInfo) => {
+  const showRouterDetails = (router: VpnRouter) => {
     setSelectedRouter(router);
     setDetailsDialogOpen(true);
   };
@@ -165,16 +161,6 @@ export const RouterManagement: React.FC = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const formatUptime = (seconds: number) => {
-    const days = Math.floor(seconds / 86400);
-    const hours = Math.floor((seconds % 86400) / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    
-    if (days > 0) return `${days}d ${hours}h`;
-    if (hours > 0) return `${hours}h ${minutes}m`;
-    return `${minutes}m`;
-  };
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -198,40 +184,39 @@ export const RouterManagement: React.FC = () => {
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="routerId">Router ID</Label>
+                <Label htmlFor="name">Router Name</Label>
                 <Input
-                  id="routerId"
-                  value={routerForm.routerId}
-                  onChange={(e) => setRouterForm(prev => ({ ...prev, routerId: e.target.value }))}
-                  placeholder="e.g., site-router-01"
+                  id="name"
+                  value={routerForm.name}
+                  onChange={(e) => setRouterForm(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="e.g., Site Router 1"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="host">IP Address</Label>
+                <Label htmlFor="ip_address">IP Address</Label>
                 <Input
-                  id="host"
-                  value={routerForm.host}
-                  onChange={(e) => setRouterForm(prev => ({ ...prev, host: e.target.value }))}
+                  id="ip_address"
+                  value={routerForm.ip_address}
+                  onChange={(e) => setRouterForm(prev => ({ ...prev, ip_address: e.target.value }))}
                   placeholder="192.168.1.1"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
+                <Label htmlFor="model">Model</Label>
                 <Input
-                  id="username"
-                  value={routerForm.username}
-                  onChange={(e) => setRouterForm(prev => ({ ...prev, username: e.target.value }))}
-                  placeholder="root"
+                  id="model"
+                  value={routerForm.model}
+                  onChange={(e) => setRouterForm(prev => ({ ...prev, model: e.target.value }))}
+                  placeholder="GL-MT300N"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="location">Location</Label>
                 <Input
-                  id="password"
-                  type="password"
-                  value={routerForm.password}
-                  onChange={(e) => setRouterForm(prev => ({ ...prev, password: e.target.value }))}
-                  placeholder="Router admin password"
+                  id="location"
+                  value={routerForm.location}
+                  onChange={(e) => setRouterForm(prev => ({ ...prev, location: e.target.value }))}
+                  placeholder="Main Office"
                 />
               </div>
               <div className="flex justify-end space-x-2">
@@ -268,71 +253,61 @@ export const RouterManagement: React.FC = () => {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
                     <Router className="h-5 w-5" />
-                    <CardTitle className="text-sm">{router.id}</CardTitle>
+                    <CardTitle className="text-sm">{router.name}</CardTitle>
                   </div>
                   <div className="flex items-center space-x-2">
-                    {getStatusIcon(router.status)}
-                    <Badge variant={router.status === 'connected' ? "default" : "destructive"}>
-                      {router.status}
+                    {getStatusIcon(router.vpn_status)}
+                    <Badge variant={router.vpn_status === 'connected' ? "default" : "destructive"}>
+                      {router.vpn_status}
                     </Badge>
                   </div>
                 </div>
                 <div className="text-xs text-muted-foreground">
-                  {router.host}
+                  {router.ip_address}
                 </div>
               </CardHeader>
 
               <CardContent className="space-y-3">
                 {/* Router Info */}
-                {router.info?.status && (
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Model:</span>
-                      <span>{router.info.status.model}</span>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Uptime:</span>
-                      <span>{formatUptime(router.info.status.uptime)}</span>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Memory:</span>
-                      <span>{Math.round((router.info.status.memory.used / router.info.status.memory.total) * 100)}%</span>
-                    </div>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Model:</span>
+                    <span>{router.model}</span>
                   </div>
-                )}
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Location:</span>
+                    <span>{router.location}</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Bandwidth:</span>
+                    <span>{formatBytes(router.bandwidth_usage)}</span>
+                  </div>
+                </div>
 
-                {/* Network Status */}
-                {router.info?.network && (
+                {/* ZeroTier Status */}
+                {router.zerotier_enabled && (
                   <div className="space-y-1">
                     <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">WAN IP:</span>
-                      <span>{router.info.network.wan.ip || 'N/A'}</span>
+                      <span className="text-muted-foreground">ZeroTier:</span>
+                      <Badge variant={router.zerotier_status === 'connected' ? "default" : "secondary"} className="text-xs">
+                        {router.zerotier_status}
+                      </Badge>
                     </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">LAN IP:</span>
-                      <span>{router.info.network.lan.ip || 'N/A'}</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Wireless Info */}
-                {router.info?.wireless && (
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center space-x-1">
-                      <Wifi className="h-3 w-3" />
-                      <span>{router.info.wireless.ssid}</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <Users className="h-3 w-3" />
-                      <span>{router.info.wireless.clients}</span>
-                    </div>
+                    {router.zerotier_ip_address && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">ZT IP:</span>
+                        <span>{router.zerotier_ip_address}</span>
+                      </div>
+                    )}
                   </div>
                 )}
 
                 {/* Last Seen */}
-                <div className="text-xs text-muted-foreground">
-                  Last seen: {new Date(router.lastSeen).toLocaleString()}
-                </div>
+                {router.last_seen && (
+                  <div className="text-xs text-muted-foreground">
+                    Last seen: {new Date(router.last_seen).toLocaleString()}
+                  </div>
+                )}
 
                 {/* Actions */}
                 <div className="flex items-center justify-between pt-2">
@@ -381,7 +356,7 @@ export const RouterManagement: React.FC = () => {
       <Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Router Details: {selectedRouter?.id}</DialogTitle>
+            <DialogTitle>Router Details: {selectedRouter?.name}</DialogTitle>
           </DialogHeader>
           
           {selectedRouter && (
@@ -389,65 +364,54 @@ export const RouterManagement: React.FC = () => {
               {/* Basic Info */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label>Router ID</Label>
-                  <p className="text-sm">{selectedRouter.id}</p>
+                  <Label>Router Name</Label>
+                  <p className="text-sm">{selectedRouter.name}</p>
                 </div>
                 <div>
                   <Label>IP Address</Label>
-                  <p className="text-sm">{selectedRouter.host}</p>
+                  <p className="text-sm">{selectedRouter.ip_address}</p>
                 </div>
                 <div>
                   <Label>Status</Label>
                   <div className="flex items-center space-x-2">
-                    {getStatusIcon(selectedRouter.status)}
-                    <span className="text-sm">{selectedRouter.status}</span>
+                    {getStatusIcon(selectedRouter.vpn_status)}
+                    <span className="text-sm">{selectedRouter.vpn_status}</span>
                   </div>
                 </div>
                 <div>
-                  <Label>Last Seen</Label>
-                  <p className="text-sm">{new Date(selectedRouter.lastSeen).toLocaleString()}</p>
+                  <Label>Location</Label>
+                  <p className="text-sm">{selectedRouter.location}</p>
                 </div>
               </div>
 
               {/* System Information */}
-              {selectedRouter.info?.status && (
-                <div>
-                  <Label className="text-base">System Information</Label>
-                  <div className="grid grid-cols-2 gap-4 mt-2">
-                    <div>
-                      <Label>Model</Label>
-                      <p className="text-sm">{selectedRouter.info.status.model}</p>
-                    </div>
-                    <div>
-                      <Label>Firmware</Label>
-                      <p className="text-sm">{selectedRouter.info.status.firmware}</p>
-                    </div>
-                    <div>
-                      <Label>Uptime</Label>
-                      <p className="text-sm">{formatUptime(selectedRouter.info.status.uptime)}</p>
-                    </div>
-                    <div>
-                      <Label>Temperature</Label>
-                      <p className="text-sm">{selectedRouter.info.status.temperature}°C</p>
-                    </div>
+              <div>
+                <Label className="text-base">Router Information</Label>
+                <div className="grid grid-cols-2 gap-4 mt-2">
+                  <div>
+                    <Label>Model</Label>
+                    <p className="text-sm">{selectedRouter.model}</p>
                   </div>
-                </div>
-              )}
-
-              {/* Connected Clients */}
-              {selectedRouter.info?.clients && selectedRouter.info.clients.length > 0 && (
-                <div>
-                  <Label className="text-base">Connected Clients ({selectedRouter.info.clients.length})</Label>
-                  <div className="mt-2 space-y-2 max-h-32 overflow-y-auto">
-                    {selectedRouter.info.clients.map((client, index) => (
-                      <div key={index} className="flex justify-between text-sm bg-muted p-2 rounded">
-                        <span>{client.hostname || 'Unknown'}</span>
-                        <span>{client.ip}</span>
+                  <div>
+                    <Label>Bandwidth Usage</Label>
+                    <p className="text-sm">{formatBytes(selectedRouter.bandwidth_usage)}</p>
+                  </div>
+                  {selectedRouter.zerotier_enabled && (
+                    <>
+                      <div>
+                        <Label>ZeroTier Status</Label>
+                        <p className="text-sm">{selectedRouter.zerotier_status}</p>
                       </div>
-                    ))}
-                  </div>
+                      {selectedRouter.zerotier_ip_address && (
+                        <div>
+                          <Label>ZeroTier IP</Label>
+                          <p className="text-sm">{selectedRouter.zerotier_ip_address}</p>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           )}
         </DialogContent>

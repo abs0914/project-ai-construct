@@ -1,21 +1,16 @@
-
 import React, { useState } from 'react';
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Settings, AlertTriangle } from 'lucide-react';
+import { Settings, AlertTriangle, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useSiteGuardData } from '@/hooks/useSiteGuardData';
 import { ErrorBoundary, SiteGuardErrorFallback } from '@/components/ui/error-boundary';
 import { SiteGuardOverview } from '@/components/siteguard/SiteGuardOverview';
 import { SiteGuardLiveFeed } from '@/components/siteguard/SiteGuardLiveFeed';
-import { SiteGuardAlerts } from '@/components/siteguard/SiteGuardAlerts';
-import { SiteGuardPersonnel } from '@/components/siteguard/SiteGuardPersonnel';
-import { SiteGuardAnalytics } from '@/components/siteguard/SiteGuardAnalytics';
-import { ZeroTierManagement } from '@/components/siteguard/ZeroTierManagement';
-import { ONVIFDiscovery } from '@/components/siteguard/ONVIFDiscovery';
-import { NetworkManagement } from '@/components/siteguard/NetworkManagement';
-import { NetworkDiscovery } from '@/components/siteguard/NetworkDiscovery';
+import { SetupWizard } from '@/components/siteguard/SetupWizard';
+import { NetworkAndAlerts } from '@/components/siteguard/NetworkAndAlerts';
+import { PersonnelAndAnalytics } from '@/components/siteguard/PersonnelAndAnalytics';
 
 const SiteGuard = () => {
   const navigate = useNavigate();
@@ -32,6 +27,10 @@ const SiteGuard = () => {
   } = useSiteGuardData();
   
   const [selectedCamera, setSelectedCamera] = useState<string>('');
+  const [showSetupWizard, setShowSetupWizard] = useState(false);
+
+  // Show setup wizard if no cameras are configured
+  const shouldShowSetupWizard = cameras.length === 0 && !loading && !error;
 
   // Auto-select first camera when data loads
   React.useEffect(() => {
@@ -68,6 +67,18 @@ const SiteGuard = () => {
     }
   };
 
+  const handleRefreshAll = () => {
+    refetch.cameras();
+    refetch.routers();
+    refetch.alerts();
+    refetch.personnel();
+  };
+
+  const handleSetupComplete = () => {
+    setShowSetupWizard(false);
+    handleRefreshAll();
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -90,27 +101,18 @@ const SiteGuard = () => {
     );
   }
 
-  const onlineCameras = cameras.filter(c => c.status === 'online').length;
-  const connectedRouters = routers.filter(r => r.vpn_status === 'connected').length;
-  const activePersonnelCount = personnel.filter(p => p.status === 'active').length;
-
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case 'high': 
-      case 'critical': 
-        return 'destructive';
-      case 'medium': 
-        return 'default';
-      case 'low': 
-        return 'secondary';
-      default: 
-        return 'default';
-    }
-  };
+  // Show Setup Wizard if requested or no cameras exist
+  if (showSetupWizard || shouldShowSetupWizard) {
+    return (
+      <ErrorBoundary fallback={SiteGuardErrorFallback}>
+        <SetupWizard onComplete={handleSetupComplete} />
+      </ErrorBoundary>
+    );
+  }
 
   return (
     <ErrorBoundary fallback={SiteGuardErrorFallback}>
-      <div className="space-y-6">
+      <div className="space-y-6 animate-fade-in">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">SiteGuard</h1>
@@ -122,6 +124,14 @@ const SiteGuard = () => {
             <Badge variant={alerts.length > 0 ? "destructive" : "secondary"}>
               {alerts.length} Active Alerts
             </Badge>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowSetupWizard(true)}
+              className="flex items-center space-x-2"
+            >
+              <Zap className="h-4 w-4" />
+              <span>Quick Setup</span>
+            </Button>
             <Button onClick={() => navigate('/siteguard/settings')}>
               <Settings className="mr-2 h-4 w-4" />
               Settings
@@ -140,16 +150,11 @@ const SiteGuard = () => {
         </ErrorBoundary>
 
         <Tabs defaultValue="live-feed" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="live-feed">Live Feed</TabsTrigger>
-          <TabsTrigger value="network-discovery">Network Discovery</TabsTrigger>
-          <TabsTrigger value="onvif-discovery">ONVIF Discovery</TabsTrigger>
-          <TabsTrigger value="network">Network</TabsTrigger>
-          <TabsTrigger value="alerts">Alerts</TabsTrigger>
-          <TabsTrigger value="personnel">Personnel</TabsTrigger>
-          <TabsTrigger value="zerotier">ZeroTier</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-        </TabsList>
+          <TabsList>
+            <TabsTrigger value="live-feed">Live Feed</TabsTrigger>
+            <TabsTrigger value="network-alerts">Network & Alerts</TabsTrigger>
+            <TabsTrigger value="personnel-analytics">Personnel & Analytics</TabsTrigger>
+          </TabsList>
 
           <TabsContent value="live-feed" className="space-y-4">
             <ErrorBoundary>
@@ -164,62 +169,21 @@ const SiteGuard = () => {
             </ErrorBoundary>
           </TabsContent>
 
-          <TabsContent value="network-discovery" className="space-y-4">
+          <TabsContent value="network-alerts" className="space-y-4">
             <ErrorBoundary>
-              <NetworkDiscovery 
+              <NetworkAndAlerts
+                cameras={cameras}
                 routers={routers}
-                onRefresh={() => {
-                  refetch.cameras();
-                  refetch.routers();
-                }}
-              />
-            </ErrorBoundary>
-          </TabsContent>
-
-          <TabsContent value="onvif-discovery" className="space-y-4">
-            <ErrorBoundary>
-              <ONVIFDiscovery />
-            </ErrorBoundary>
-          </TabsContent>
-
-          <TabsContent value="network" className="space-y-4">
-            <ErrorBoundary>
-              <NetworkManagement />
-            </ErrorBoundary>
-          </TabsContent>
-
-          <TabsContent value="alerts" className="space-y-4">
-            <ErrorBoundary>
-              <SiteGuardAlerts
                 alerts={alerts}
                 onResolveAlert={handleResolveAlert}
+                onRefresh={handleRefreshAll}
               />
             </ErrorBoundary>
           </TabsContent>
 
-          <TabsContent value="personnel" className="space-y-4">
+          <TabsContent value="personnel-analytics" className="space-y-4">
             <ErrorBoundary>
-              <SiteGuardPersonnel personnel={personnel} />
-            </ErrorBoundary>
-          </TabsContent>
-
-          <TabsContent value="zerotier" className="space-y-4">
-            <ErrorBoundary>
-              <ZeroTierManagement 
-                routers={routers} 
-                onRefresh={() => {
-                  refetch.cameras();
-                  refetch.routers();
-                  refetch.alerts();
-                  refetch.personnel();
-                }}
-              />
-            </ErrorBoundary>
-          </TabsContent>
-
-          <TabsContent value="analytics" className="space-y-4">
-            <ErrorBoundary>
-              <SiteGuardAnalytics
+              <PersonnelAndAnalytics
                 cameras={cameras}
                 routers={routers}
                 alerts={alerts}
