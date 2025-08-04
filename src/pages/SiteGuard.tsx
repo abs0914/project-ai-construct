@@ -11,6 +11,7 @@ import { SiteGuardLiveFeed } from '@/components/siteguard/SiteGuardLiveFeed';
 import { SetupWizard } from '@/components/siteguard/SetupWizard';
 import { NetworkAndAlerts } from '@/components/siteguard/NetworkAndAlerts';
 import { PersonnelAndAnalytics } from '@/components/siteguard/PersonnelAndAnalytics';
+import { StreamDebugger } from '@/components/siteguard/StreamDebugger';
 
 const SiteGuard = () => {
   const navigate = useNavigate();
@@ -167,6 +168,13 @@ const SiteGuard = () => {
                 onRefreshCamera={handleRefreshCamera}
               />
             </ErrorBoundary>
+            
+            {/* Stream Debugger for troubleshooting */}
+            <div className="mt-8">
+              <ErrorBoundary>
+                <StreamDebugger />
+              </ErrorBoundary>
+            </div>
           </TabsContent>
 
           <TabsContent value="network-alerts" className="space-y-4">

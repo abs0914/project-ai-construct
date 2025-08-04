@@ -36,13 +36,16 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamingServiceRef = useRef<VideoStreamingService | null>(null);
 
-  // State management
+  // Enhanced state management
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentProtocol, setCurrentProtocol] = useState<StreamingProtocol | null>(null);
   const [streamStats, setStreamStats] = useState<UnifiedStreamStats | null>(null);
   const [connectionState, setConnectionState] = useState<string>('disconnected');
+  const [detailedError, setDetailedError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [lastAttemptTime, setLastAttemptTime] = useState<Date | null>(null);
 
   // Initialize streaming service
   const initializeStream = useCallback(async () => {
@@ -76,7 +79,9 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({
       streamingService.onError((err) => {
         console.error('Streaming error:', err);
         setError(err.message);
+        setDetailedError(`${err.message} (Protocol: ${currentProtocol || 'unknown'}, Retry: ${retryCount})`);
         setIsConnecting(false);
+        setLastAttemptTime(new Date());
       });
 
       streamingService.onStateChange((state) => {
@@ -92,13 +97,20 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({
       streamingServiceRef.current = streamingService;
 
       // Start the stream
+      setLastAttemptTime(new Date());
       await streamingService.startStream(videoRef.current);
       setIsConnecting(false);
+      setRetryCount(0); // Reset retry count on successful connection
 
     } catch (err) {
       console.error('Failed to initialize stream:', err);
-      setError(`Failed to connect: ${err.message}`);
+      const rtspUrl = camera.rtsp_url || `rtsp://${camera.ip_address}:554/stream1`;
+      const errorMsg = `Failed to connect: ${err.message}`;
+      setError(errorMsg);
+      setDetailedError(`${errorMsg} (Camera: ${camera.id}, RTSP: ${rtspUrl})`);
       setIsConnecting(false);
+      setRetryCount(prev => prev + 1);
+      setLastAttemptTime(new Date());
     }
   }, [camera]);
 
@@ -116,6 +128,8 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({
     setCurrentProtocol(null);
     setStreamStats(null);
     setConnectionState('disconnected');
+    setError(null);
+    setDetailedError(null);
   }, []);
 
   // Effect to handle stream initialization/cleanup
@@ -148,6 +162,8 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({
   };
 
   const handleRefresh = async () => {
+    console.log(`Refreshing camera feed for ${camera.name}`);
+    setRetryCount(0); // Reset retry count on manual refresh
     await cleanupStream();
     if (isSelected && camera.status === 'online') {
       await initializeStream();
@@ -199,17 +215,28 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({
             </Badge>
           </div>
         </div>
-        {streamStats && (
-          <div className="flex items-center space-x-4 text-xs text-muted-foreground mt-2">
-            <div className="flex items-center space-x-1">
-              <Signal className="h-3 w-3" />
-              <span>{formatBitrate(streamStats.bitrate)}</span>
-            </div>
-            <div>{streamStats.fps} FPS</div>
-            <div>{streamStats.resolution.width}x{streamStats.resolution.height}</div>
-            {streamStats.latency && <div>{streamStats.latency.toFixed(0)}ms</div>}
-          </div>
-        )}
+        {/* Enhanced status information */}
+        <div className="flex items-center space-x-4 text-xs text-muted-foreground mt-2">
+          {streamStats ? (
+            <>
+              <div className="flex items-center space-x-1">
+                <Signal className="h-3 w-3" />
+                <span>{formatBitrate(streamStats.bitrate)}</span>
+              </div>
+              <div>{streamStats.fps} FPS</div>
+              <div>{streamStats.resolution.width}x{streamStats.resolution.height}</div>
+              {streamStats.latency && <div>{streamStats.latency.toFixed(0)}ms</div>}
+            </>
+          ) : (
+            <>
+              <div>State: {connectionState}</div>
+              {retryCount > 0 && <div>Retries: {retryCount}</div>}
+              {lastAttemptTime && (
+                <div>Last: {lastAttemptTime.toLocaleTimeString()}</div>
+              )}
+            </>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         <div className="aspect-video bg-slate-100 rounded-lg mb-3 relative overflow-hidden">
@@ -235,20 +262,40 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({
                 </div>
               )}
 
-              {/* Error overlay */}
+              {/* Enhanced error overlay */}
               {error && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                  <div className="text-white text-center">
+                  <div className="text-white text-center max-w-xs p-4">
                     <Camera className="h-8 w-8 mx-auto mb-2" />
-                    <p className="text-sm">{error}</p>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="mt-2 text-white border-white hover:bg-white hover:text-black"
-                      onClick={handleRefresh}
-                    >
-                      Retry
-                    </Button>
+                    <p className="text-sm font-medium mb-1">{error}</p>
+                    {detailedError && (
+                      <p className="text-xs text-gray-300 mb-3 break-words">{detailedError}</p>
+                    )}
+                    <div className="flex flex-col gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-white border-white hover:bg-white hover:text-black"
+                        onClick={handleRefresh}
+                      >
+                        Retry Connection
+                      </Button>
+                      {retryCount > 2 && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-yellow-300 border-yellow-300 hover:bg-yellow-300 hover:text-black"
+                          onClick={() => {
+                            // Reset and try with test stream
+                            setError(null);
+                            setDetailedError(null);
+                            console.log('Consider using test stream for debugging');
+                          }}
+                        >
+                          Debug Mode
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}

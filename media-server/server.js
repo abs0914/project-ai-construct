@@ -76,14 +76,84 @@ const log = {
   error: (msg) => console.error(`[ERROR] ${new Date().toISOString()} - ${msg}`)
 };
 
-// Stream management endpoints
+// Enhanced stream management endpoints with debugging
 app.get('/api/streams', (req, res) => {
   const streams = Array.from(activeStreams.entries()).map(([streamKey, info]) => ({
     streamKey,
     ...info,
     health: streamHealth.get(streamKey) || { status: 'unknown' }
   }));
-  res.json({ streams });
+  res.json({ 
+    streams,
+    totalStreams: streams.length,
+    serverStatus: 'healthy',
+    uptime: process.uptime()
+  });
+});
+
+// Add debugging endpoints
+app.get('/api/debug/streams', (req, res) => {
+  const debug = {
+    activeStreams: activeStreams.size,
+    streamHealth: streamHealth.size,
+    streamRetries: Object.fromEntries(streamRetries),
+    processDetails: Array.from(activeStreams.entries()).map(([key, stream]) => ({
+      streamKey: key,
+      processAlive: stream.process ? !stream.process.killed : false,
+      startTime: stream.startTime,
+      rtspUrl: stream.rtspUrl?.replace(/\/\/.*:.*@/, '//***:***@'), // Hide credentials
+      status: stream.status
+    }))
+  };
+  res.json(debug);
+});
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    activeStreams: activeStreams.size,
+    version: '1.0.0'
+  });
+});
+
+// Test stream endpoint with known good RTSP source
+app.post('/api/test/stream', async (req, res) => {
+  const testStreamKey = 'test_stream';
+  const testRtspUrl = 'rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mp4';
+  
+  try {
+    log.info('Starting test stream with Big Buck Bunny');
+    
+    const rtmpUrl = `rtmp://localhost:1935/live/${testStreamKey}`;
+    const ffmpegProcess = startRTSPToRTMP(testRtspUrl, rtmpUrl, null, null, 'medium');
+    
+    activeStreams.set(testStreamKey, {
+      cameraId: 'test',
+      rtspUrl: testRtspUrl,
+      rtmpUrl,
+      hlsUrl: `http://localhost:8000/live/${testStreamKey}/index.m3u8`,
+      webrtcUrl: `ws://localhost:8001/webrtc/${testStreamKey}`,
+      process: ffmpegProcess,
+      startTime: new Date(),
+      status: 'starting'
+    });
+
+    res.json({
+      success: true,
+      streamKey: testStreamKey,
+      message: 'Test stream started with Big Buck Bunny',
+      urls: {
+        hls: `http://localhost:8000/live/${testStreamKey}/index.m3u8`,
+        webrtc: `ws://localhost:8001/webrtc/${testStreamKey}`
+      }
+    });
+  } catch (error) {
+    log.error(`Test stream failed: ${error.message}`);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 app.post('/api/streams/:cameraId/start', async (req, res) => {
@@ -91,10 +161,26 @@ app.post('/api/streams/:cameraId/start', async (req, res) => {
   const { rtspUrl, username, password } = req.body;
 
   try {
+    log.info(`Starting stream for camera ${cameraId} with RTSP: ${rtspUrl?.replace(/\/\/.*:.*@/, '//***:***@')}`);
+    
     const streamKey = `camera_${cameraId}`;
     const rtmpUrl = `rtmp://localhost:1935/live/${streamKey}`;
     
-    // Start RTSP to RTMP conversion
+    // Validate RTSP URL
+    if (!rtspUrl) {
+      throw new Error('RTSP URL is required');
+    }
+    
+    // Check if stream already exists
+    if (activeStreams.has(streamKey)) {
+      log.warn(`Stream ${streamKey} already exists, stopping previous stream`);
+      const existingStream = activeStreams.get(streamKey);
+      if (existingStream.process) {
+        existingStream.process.kill('SIGTERM');
+      }
+    }
+    
+    // Start RTSP to RTMP conversion with enhanced logging
     const ffmpegProcess = startRTSPToRTMP(rtspUrl, rtmpUrl, username, password);
     
     activeStreams.set(streamKey, {
@@ -108,25 +194,34 @@ app.post('/api/streams/:cameraId/start', async (req, res) => {
       status: 'starting'
     });
 
-    // Update stream health
+    // Initialize stream health
     streamHealth.set(streamKey, {
-      status: 'healthy',
+      status: 'starting',
       lastUpdate: new Date(),
       bitrate: 0,
-      fps: 0
+      fps: 0,
+      connectionAttempts: 1
     });
 
+    log.info(`Stream ${streamKey} initialization complete`);
+    
     res.json({ 
       success: true, 
       streamKey,
+      cameraId,
       urls: {
         hls: `http://localhost:8000/live/${streamKey}/index.m3u8`,
         webrtc: `ws://localhost:8001/webrtc/${streamKey}`
-      }
+      },
+      message: 'Stream started successfully. Wait 3-5 seconds for HLS segments to be generated.'
     });
   } catch (error) {
-    console.error('Error starting stream:', error);
-    res.status(500).json({ error: error.message });
+    log.error(`Error starting stream for camera ${cameraId}: ${error.message}`);
+    res.status(500).json({ 
+      error: error.message,
+      cameraId,
+      timestamp: new Date().toISOString()
+    });
   }
 });
 
@@ -156,83 +251,133 @@ app.get('/api/streams/:streamKey/health', (req, res) => {
   }
 });
 
-// Enhanced RTSP to RTMP conversion function
+// Enhanced RTSP to RTMP conversion function with detailed logging
 function startRTSPToRTMP(rtspUrl, rtmpUrl, username, password, quality = 'medium') {
   const authUrl = username && password
     ? rtspUrl.replace('rtsp://', `rtsp://${username}:${password}@`)
     : rtspUrl;
 
-  log.info(`Starting RTSP to RTMP conversion: ${authUrl} -> ${rtmpUrl} (Quality: ${quality})`);
+  const logSafeUrl = authUrl.replace(/\/\/.*:.*@/, '//***:***@');
+  log.info(`🎬 Starting RTSP to RTMP conversion: ${logSafeUrl} -> ${rtmpUrl} (Quality: ${quality})`);
 
   const ffmpegOptions = config.getFFmpegOptions(authUrl, 'rtmp', quality);
+  const streamKey = rtmpUrl.split('/').pop();
 
   const ffmpegProcess = ffmpeg(authUrl)
     .inputOptions(ffmpegOptions.input)
     .outputOptions(ffmpegOptions.output)
     .output(rtmpUrl)
     .on('start', (commandLine) => {
-      log.info(`FFmpeg started: ${commandLine}`);
-    })
-    .on('progress', (progress) => {
-      // Update stream health with progress info
-      const streamKey = rtmpUrl.split('/').pop();
+      log.info(`✅ FFmpeg started for ${streamKey}: ${commandLine.replace(/rtsp:\/\/.*:.*@/, 'rtsp://***:***@')}`);
+      
+      // Update stream status
       if (streamHealth.has(streamKey)) {
         const health = streamHealth.get(streamKey);
         streamHealth.set(streamKey, {
           ...health,
-          fps: progress.currentFps || 0,
-          bitrate: progress.currentKbps || 0,
+          status: 'connecting',
           lastUpdate: new Date()
         });
       }
     })
+    .on('progress', (progress) => {
+      // Update stream health with detailed progress info
+      if (streamHealth.has(streamKey)) {
+        const health = streamHealth.get(streamKey);
+        streamHealth.set(streamKey, {
+          ...health,
+          status: 'streaming',
+          fps: progress.currentFps || 0,
+          bitrate: progress.currentKbps || 0,
+          lastUpdate: new Date(),
+          frames: progress.frames || 0,
+          timemark: progress.timemark || '00:00:00'
+        });
+        
+        // Log progress periodically
+        if (progress.frames && progress.frames % 300 === 0) { // Every ~10 seconds at 30fps
+          log.info(`📊 Stream ${streamKey} progress: ${progress.currentFps}fps, ${progress.currentKbps}kbps, ${progress.timemark}`);
+        }
+      }
+    })
+    .on('stderr', (stderrLine) => {
+      // Log FFmpeg stderr for debugging
+      if (stderrLine.includes('error') || stderrLine.includes('failed')) {
+        log.error(`🔴 FFmpeg stderr (${streamKey}): ${stderrLine}`);
+      } else if (stderrLine.includes('Input') || stderrLine.includes('Output')) {
+        log.info(`📝 FFmpeg info (${streamKey}): ${stderrLine}`);
+      }
+    })
     .on('error', (err) => {
-      log.error(`FFmpeg error: ${err.message}`);
+      log.error(`❌ FFmpeg error for ${streamKey}: ${err.message}`);
+
+      // Update stream health with error
+      streamHealth.set(streamKey, {
+        status: 'error',
+        lastUpdate: new Date(),
+        error: err.message,
+        errorCode: err.code || 'unknown'
+      });
 
       // Handle retry logic
-      const streamKey = rtmpUrl.split('/').pop();
       const retryCount = streamRetries.get(streamKey) || 0;
 
       if (retryCount < config.monitoring.maxRetries) {
-        log.info(`Retrying stream ${streamKey} (attempt ${retryCount + 1}/${config.monitoring.maxRetries})`);
+        log.info(`🔄 Retrying stream ${streamKey} (attempt ${retryCount + 1}/${config.monitoring.maxRetries}) in ${config.monitoring.retryDelayMs}ms`);
         streamRetries.set(streamKey, retryCount + 1);
 
         setTimeout(() => {
+          log.info(`🔁 Attempting retry for ${streamKey}`);
           const newProcess = startRTSPToRTMP(rtspUrl, rtmpUrl, username, password, quality);
           if (activeStreams.has(streamKey)) {
             const stream = activeStreams.get(streamKey);
             stream.process = newProcess;
+            stream.status = 'retrying';
             activeStreams.set(streamKey, stream);
           }
         }, config.monitoring.retryDelayMs);
       } else {
-        log.error(`Max retries exceeded for stream ${streamKey}`);
+        log.error(`💀 Max retries exceeded for stream ${streamKey}`);
         streamHealth.set(streamKey, {
-          status: 'error',
+          status: 'failed',
           lastUpdate: new Date(),
-          error: err.message
+          error: `Max retries (${config.monitoring.maxRetries}) exceeded: ${err.message}`,
+          finalError: true
         });
       }
     })
     .on('end', () => {
-      log.info('FFmpeg process ended');
-      const streamKey = rtmpUrl.split('/').pop();
+      log.info(`🏁 FFmpeg process ended for ${streamKey}`);
       streamHealth.set(streamKey, {
         status: 'ended',
-        lastUpdate: new Date()
+        lastUpdate: new Date(),
+        endReason: 'natural'
       });
     });
 
-  // Add timeout handling
+  // Add enhanced timeout handling
   const timeout = setTimeout(() => {
-    log.warn(`Stream timeout for ${rtmpUrl}`);
+    log.warn(`⏰ Stream timeout for ${streamKey} after ${config.monitoring.streamTimeoutMs}ms`);
+    streamHealth.set(streamKey, {
+      status: 'timeout',
+      lastUpdate: new Date(),
+      error: 'Stream connection timeout'
+    });
     ffmpegProcess.kill('SIGTERM');
   }, config.monitoring.streamTimeoutMs);
 
   ffmpegProcess.on('end', () => clearTimeout(timeout));
   ffmpegProcess.on('error', () => clearTimeout(timeout));
 
-  ffmpegProcess.run();
+  try {
+    ffmpegProcess.run();
+    log.info(`🚀 FFmpeg process launched for ${streamKey}`);
+  } catch (runError) {
+    log.error(`💥 Failed to run FFmpeg for ${streamKey}: ${runError.message}`);
+    clearTimeout(timeout);
+    throw runError;
+  }
+
   return ffmpegProcess;
 }
 
