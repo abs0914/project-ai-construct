@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Wifi } from 'lucide-react';
 import { CameraFeed } from './CameraFeed';
+import HLSTestPlayer from './HLSTestPlayer';
 import { Camera, VpnRouter } from '@/hooks/useSiteGuardData';
 
 interface SiteGuardLiveFeedProps {
@@ -23,7 +24,16 @@ export const SiteGuardLiveFeed: React.FC<SiteGuardLiveFeedProps> = ({
   onRefreshCamera
 }) => {
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {/* HLS Test Section */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <h3 className="text-sm font-medium text-blue-800 mb-2">🔧 Debug: HLS Streaming Test</h3>
+        <p className="text-xs text-blue-700 mb-4">
+          Test the media server with Big Buck Bunny stream to verify HLS functionality before trying camera streams.
+        </p>
+        <HLSTestPlayer />
+      </div>
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {cameras.map((camera) => (
           <CameraFeed

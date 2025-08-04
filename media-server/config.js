@@ -37,7 +37,7 @@ const config = {
       ],
       hls: [
         '-c:v', 'libx264',
-        '-preset', 'fast',
+        '-preset', 'ultrafast',
         '-tune', 'zerolatency',
         '-profile:v', 'baseline',
         '-level', '3.0',
@@ -46,8 +46,11 @@ const config = {
         '-b:a', '128k',
         '-f', 'hls',
         '-hls_time', '2',
-        '-hls_list_size', '10',
-        '-hls_flags', 'delete_segments+append_list'
+        '-hls_list_size', '5',
+        '-hls_wrap', '10',
+        '-hls_allow_cache', '0',
+        '-hls_flags', 'delete_segments+append_list+omit_endlist',
+        '-hls_segment_filename', '%v/segment_%03d.ts'
       ],
       webrtc: [
         '-c:v', 'libvpx-vp8',
