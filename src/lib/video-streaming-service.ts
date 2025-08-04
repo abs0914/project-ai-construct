@@ -34,7 +34,7 @@ export class VideoStreamingService {
   private config: StreamingConfig;
   private videoElement: HTMLVideoElement | null = null;
   private mediaServerUrl = 'https://aooppgijnjxbsylvwukx.supabase.co/functions/v1/video-streaming';
-  private isDevelopmentMode = true; // Enable development mode when media server is unavailable
+  private isDevelopmentMode = false; // Try real streaming infrastructure
   
   // Event callbacks
   private onStatsCallback?: (stats: UnifiedStreamStats) => void;
