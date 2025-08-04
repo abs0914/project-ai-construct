@@ -178,14 +178,15 @@ async function handleStartStream(
       storage_path: finalRtspUrl
     });
 
+  const streamKey = `camera_${cameraId}`;
   const response: StreamResponse = {
     success: true,
-    streamKey: `direct_${cameraId}`,
+    streamKey: streamKey,
     urls: {
-      hls: finalRtspUrl, // Direct RTSP URL for testing
-      webrtc: finalRtspUrl
+      hls: `https://api.aiconstructpro.com/live/${streamKey}/index.m3u8`,
+      webrtc: `wss://api.aiconstructpro.com/webrtc/${streamKey}`
     },
-    status: 'direct_access'
+    status: 'media_server_streaming'
   };
 
   return new Response(
