@@ -230,8 +230,11 @@ export class VideoStreamingService {
   private async connectHLS(): Promise<void> {
     if (!this.videoElement) throw new Error('Video element not available');
 
+    const hlsUrl = `http://api.aiconstructpro.com:8000/live/camera_${this.config.cameraId}/index.m3u8`;
+    console.log('Attempting HLS connection to:', hlsUrl);
+
     const hlsConfig: HLSConfig = {
-      streamUrl: `http://api.aiconstructpro.com:8000/live/camera_${this.config.cameraId}/index.m3u8`,
+      streamUrl: hlsUrl,
       autoplay: this.config.autoplay ?? true,
       muted: this.config.muted ?? true,
     };
