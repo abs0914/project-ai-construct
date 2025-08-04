@@ -117,10 +117,10 @@ server {
         return 204;
     }
     
-    # Media Server Routes
-    location /api/media/ {
+    # Media Server Routes - Handle /api/streams and /api/media
+    location ~ ^/api/(streams|media)/?(.*)$ {
         limit_req zone=api_limit burst=20 nodelay;
-        proxy_pass http://siteguard_media_server/api/media/;
+        proxy_pass http://siteguard_media_server/api/$1/$2;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -131,6 +131,30 @@ server {
         proxy_cache_bypass \$http_upgrade;
         proxy_read_timeout 300s;
         proxy_connect_timeout 75s;
+    }
+    
+    # HLS Streaming Support
+    location ~ ^/live/(.+)\.m3u8$ {
+        proxy_pass http://siteguard_media_server/live/$1.m3u8;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        add_header Cache-Control no-cache;
+        add_header Access-Control-Allow-Origin "*";
+    }
+    
+    # HLS Segment Support
+    location ~ ^/live/(.+)\.ts$ {
+        proxy_pass http://siteguard_media_server/live/$1.ts;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        add_header Cache-Control "max-age=10";
+        add_header Access-Control-Allow-Origin "*";
     }
     
     # ONVIF Server Routes
@@ -314,10 +338,10 @@ server {
         return 204;
     }
     
-    # Media Server Routes
-    location /api/media/ {
+    # Media Server Routes - Handle /api/streams and /api/media
+    location ~ ^/api/(streams|media)/?(.*)$ {
         limit_req zone=api_limit burst=20 nodelay;
-        proxy_pass http://siteguard_media_server/api/media/;
+        proxy_pass http://siteguard_media_server/api/$1/$2;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -328,6 +352,30 @@ server {
         proxy_cache_bypass \$http_upgrade;
         proxy_read_timeout 300s;
         proxy_connect_timeout 75s;
+    }
+    
+    # HLS Streaming Support
+    location ~ ^/live/(.+)\.m3u8$ {
+        proxy_pass http://siteguard_media_server/live/$1.m3u8;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        add_header Cache-Control no-cache;
+        add_header Access-Control-Allow-Origin "*";
+    }
+    
+    # HLS Segment Support
+    location ~ ^/live/(.+)\.ts$ {
+        proxy_pass http://siteguard_media_server/live/$1.ts;
+        proxy_http_version 1.1;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        add_header Cache-Control "max-age=10";
+        add_header Access-Control-Allow-Origin "*";
     }
     
     # ONVIF Server Routes
