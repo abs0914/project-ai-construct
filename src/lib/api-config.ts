@@ -5,16 +5,16 @@
 
 export const API_CONFIG = {
   // Base API URL pointing to Contabo VPS
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://api.aiconstructpro.com',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'https://api.aiconstructpro.com',
   
   // Individual service URLs
-  mediaServer: import.meta.env.VITE_MEDIA_SERVER_URL || 'http://api.aiconstructpro.com/api/media',
-  onvifServer: import.meta.env.VITE_ONVIF_SERVER_URL || 'http://api.aiconstructpro.com/api/onvif',
-  networkServer: import.meta.env.VITE_NETWORK_SERVER_URL || 'http://api.aiconstructpro.com/api/network',
-  securityServer: import.meta.env.VITE_SECURITY_SERVER_URL || 'http://api.aiconstructpro.com/api/security',
+  mediaServer: import.meta.env.VITE_MEDIA_SERVER_URL || 'https://api.aiconstructpro.com/api/media',
+  onvifServer: import.meta.env.VITE_ONVIF_SERVER_URL || 'https://api.aiconstructpro.com/api/onvif',
+  networkServer: import.meta.env.VITE_NETWORK_SERVER_URL || 'https://api.aiconstructpro.com/api/network',
+  securityServer: import.meta.env.VITE_SECURITY_SERVER_URL || 'https://api.aiconstructpro.com/api/security',
   
   // WebSocket URL for real-time communication
-  websocketURL: import.meta.env.VITE_WEBSOCKET_URL || 'ws://api.aiconstructpro.com',
+  websocketURL: import.meta.env.VITE_WEBSOCKET_URL || 'wss://api.aiconstructpro.com',
   
   // Request timeout settings
   timeout: 10000,
@@ -27,10 +27,11 @@ export const API_CONFIG = {
  * Get stream URL for a specific camera
  */
 export const getStreamUrl = (cameraId: string, format: 'hls' | 'webrtc' = 'hls') => {
+  const streamKey = `camera_${cameraId}`;
   if (format === 'hls') {
-    return `http://api.aiconstructpro.com:8000/live/${cameraId}/index.m3u8`;
+    return `https://api.aiconstructpro.com/live/${streamKey}/index.m3u8`;
   } else {
-    return `ws://api.aiconstructpro.com:8001/webrtc/${cameraId}`;
+    return `wss://api.aiconstructpro.com/webrtc/${streamKey}`;
   }
 };
 

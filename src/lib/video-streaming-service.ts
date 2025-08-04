@@ -34,7 +34,7 @@ export class VideoStreamingService {
   private config: StreamingConfig;
   private videoElement: HTMLVideoElement | null = null;
   private mediaServerUrl = 'https://aooppgijnjxbsylvwukx.supabase.co/functions/v1/video-streaming';
-  private isDevelopmentMode = true; // Temporarily enable mock until media server is accessible
+  private isDevelopmentMode = false; // Test real streaming with correct URLs
   
   // Event callbacks
   private onStatsCallback?: (stats: UnifiedStreamStats) => void;
@@ -189,9 +189,10 @@ export class VideoStreamingService {
   private async connectWebRTC(): Promise<void> {
     if (!this.videoElement) throw new Error('Video element not available');
 
+    const streamKey = `camera_${this.config.cameraId}`;
     const webrtcConfig: WebRTCConfig = {
-      streamKey: `camera_${this.config.cameraId}`,
-      signalingUrl: `ws://api.aiconstructpro.com:8001/webrtc/camera_${this.config.cameraId}`,
+      streamKey: streamKey,
+      signalingUrl: `wss://api.aiconstructpro.com/webrtc/${streamKey}`,
     };
 
     this.webrtcClient = new WebRTCClient(webrtcConfig);
@@ -230,7 +231,9 @@ export class VideoStreamingService {
   private async connectHLS(): Promise<void> {
     if (!this.videoElement) throw new Error('Video element not available');
 
-    const hlsUrl = `http://api.aiconstructpro.com:8000/live/camera_${this.config.cameraId}/index.m3u8`;
+    // Use the correct HLS URL format with streamKey
+    const streamKey = `camera_${this.config.cameraId}`;
+    const hlsUrl = `https://api.aiconstructpro.com/live/${streamKey}/index.m3u8`;
     console.log('Attempting HLS connection to:', hlsUrl);
 
     const hlsConfig: HLSConfig = {
