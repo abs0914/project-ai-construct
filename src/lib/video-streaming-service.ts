@@ -78,24 +78,54 @@ export class VideoStreamingService {
   }
 
   private async startMediaServerStream(): Promise<{ webrtcUrl: string; hlsUrl: string }> {
-    const { data, error } = await supabase.functions.invoke('video-streaming', {
-      body: {
-        action: 'start',
-        cameraId: this.config.cameraId,
-        rtspUrl: this.config.rtspUrl,
-        username: this.config.username,
-        password: this.config.password,
-      },
-    });
+    try {
+      console.log('Starting media server stream...');
+      
+      // First attempt: Direct API call to media server
+      try {
+        const { mediaStreamService } = await import('./services/media-stream-service');
+        
+        const stream = await mediaStreamService.startStream({
+          cameraId: this.config.cameraId,
+          rtspUrl: this.config.rtspUrl || '',
+          username: this.config.username,
+          password: this.config.password,
+          quality: 'medium'
+        });
+        
+        console.log('Media server stream started via direct API:', stream);
+        return {
+          hlsUrl: stream.hlsUrl || `http://api.aiconstructpro.com:8000/live/${stream.streamKey}/index.m3u8`,
+          webrtcUrl: stream.webrtcUrl || `ws://api.aiconstructpro.com:8001/webrtc/${stream.streamKey}`
+        };
+      } catch (directApiError) {
+        console.warn('Direct API call failed, trying Supabase function:', directApiError);
+        
+        // Fallback: Supabase edge function
+        const { data, error } = await supabase.functions.invoke('video-streaming', {
+          body: {
+            action: 'start',
+            cameraId: this.config.cameraId,
+            rtspUrl: this.config.rtspUrl,
+            username: this.config.username,
+            password: this.config.password,
+          },
+        });
 
-    if (error || !data?.success) {
-      throw new Error(`Video streaming error: ${error?.message || data?.error || 'Unknown error'}`);
+        if (error || !data?.success) {
+          throw new Error(`All stream start methods failed. Direct API: ${directApiError}, Supabase: ${error?.message || data?.error || 'Unknown error'}`);
+        }
+
+        console.log('Media server stream started via Supabase function:', data);
+        return {
+          hlsUrl: data.urls?.hls || '',
+          webrtcUrl: data.urls?.webrtc || ''
+        };
+      }
+    } catch (error) {
+      console.error('Media server stream start failed:', error);
+      throw error;
     }
-
-    return {
-      hlsUrl: data.urls?.hls || '',
-      webrtcUrl: data.urls?.webrtc || ''
-    };
   }
 
   private async selectOptimalProtocol(): Promise<StreamingProtocol> {
@@ -373,12 +403,23 @@ export class VideoStreamingService {
     // Stop the stream on the media server (only if not in mock mode)
     if (this.currentProtocol !== 'mock') {
       try {
-        await supabase.functions.invoke('video-streaming', {
-          body: {
-            action: 'stop',
-            cameraId: this.config.cameraId,
-          },
-        });
+        // Try direct API first
+        const { mediaStreamService } = await import('./services/media-stream-service');
+        const stream = mediaStreamService.getStreamByCameraId(this.config.cameraId);
+        
+        if (stream) {
+          await mediaStreamService.stopStream(stream.streamKey);
+          console.log('Stream stopped via direct API');
+        } else {
+          // Fallback to Supabase function
+          await supabase.functions.invoke('video-streaming', {
+            body: {
+              action: 'stop',
+              cameraId: this.config.cameraId,
+            },
+          });
+          console.log('Stream stopped via Supabase function');
+        }
       } catch (error) {
         console.error('Error stopping media server stream:', error);
       }

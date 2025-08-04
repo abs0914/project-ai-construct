@@ -8,6 +8,7 @@ export { authService } from './auth-service';
 export { cameraService } from './camera-service';
 export { networkService } from './network-service';
 export { websocketService } from './websocket-service';
+export { mediaStreamService } from './media-stream-service';
 
 // Export types
 export type {
