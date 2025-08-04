@@ -57,6 +57,17 @@ export class VideoStreamingService {
         return;
       }
 
+      // Check media server connectivity first
+      console.log('Checking media server connectivity...');
+      const { mediaStreamService } = await import('./services/media-stream-service');
+      const isConnected = await mediaStreamService.checkConnectivity();
+      
+      if (!isConnected) {
+        console.warn('Media server is not accessible, falling back to mock service');
+        await this.connectWithProtocol('mock');
+        return;
+      }
+
       // Try to start the stream on the media server
       try {
         await this.startMediaServerStream();
@@ -67,7 +78,7 @@ export class VideoStreamingService {
         // Connect using the selected protocol
         await this.connectWithProtocol(protocol);
       } catch (mediaServerError) {
-        console.warn('Media server unavailable, falling back to mock service:', mediaServerError);
+        console.warn('Media server stream failed, falling back to mock service:', mediaServerError);
         await this.connectWithProtocol('mock');
       }
       
