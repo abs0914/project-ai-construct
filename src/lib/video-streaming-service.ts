@@ -35,6 +35,7 @@ export class VideoStreamingService {
   private videoElement: HTMLVideoElement | null = null;
   private mediaServerUrl = 'https://aooppgijnjxbsylvwukx.supabase.co/functions/v1/video-streaming';
   private isDevelopmentMode = false; // Test real streaming with correct URLs
+  private disableWebRTC = true; // Disable WebRTC, use HLS-only approach
   
   // Event callbacks
   private onStatsCallback?: (stats: UnifiedStreamStats) => void;
@@ -129,12 +130,25 @@ export class VideoStreamingService {
       return this.config.preferredProtocol;
     }
 
-    // Auto-select based on browser capabilities and network conditions
+    // Force HLS-only approach for reliability
+    if (this.disableWebRTC) {
+      const supportsHLS = HLSClient.isSupported() || (this.videoElement && 
+        HLSClient.canPlayNatively(this.videoElement, ''));
+      
+      if (supportsHLS) {
+        console.log('Using HLS-only streaming approach');
+        return 'hls';
+      } else {
+        console.warn('HLS not supported, using mock');
+        return 'mock';
+      }
+    }
+
+    // Legacy auto-select logic (currently disabled)
     const supportsWebRTC = this.isWebRTCSupported();
     const supportsHLS = HLSClient.isSupported() || (this.videoElement && 
       HLSClient.canPlayNatively(this.videoElement, ''));
 
-    // Prefer WebRTC for lower latency, fallback to HLS, then mock
     if (supportsWebRTC) {
       return 'webrtc';
     } else if (supportsHLS) {

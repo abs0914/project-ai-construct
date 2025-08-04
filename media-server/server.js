@@ -57,7 +57,10 @@ const io = socketIo(server, {
 });
 
 app.use(cors({
-  origin: config.security.allowedOrigins
+  origin: '*', // Allow all origins for development
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-client-info', 'apikey']
 }));
 app.use(express.json());
 
@@ -157,6 +160,42 @@ app.post('/api/test/stream', async (req, res) => {
     });
   } catch (error) {
     log.error(`Test stream failed: ${error.message}`);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Add HLS verification endpoint
+app.get('/api/streams/:streamKey/verify-hls', async (req, res) => {
+  const { streamKey } = req.params;
+  const stream = activeStreams.get(streamKey);
+  
+  if (!stream) {
+    return res.status(404).json({ error: 'Stream not found' });
+  }
+  
+  try {
+    // Check if HLS files exist
+    const hlsPath = path.join(config.storage.mediaRoot, 'live', streamKey);
+    const manifestPath = path.join(hlsPath, 'index.m3u8');
+    
+    const manifestExists = fs.existsSync(manifestPath);
+    let segmentCount = 0;
+    
+    if (fs.existsSync(hlsPath)) {
+      const files = fs.readdirSync(hlsPath);
+      segmentCount = files.filter(file => file.endsWith('.ts')).length;
+    }
+    
+    res.json({
+      streamKey,
+      hlsPath,
+      manifestExists,
+      segmentCount,
+      files: fs.existsSync(hlsPath) ? fs.readdirSync(hlsPath) : [],
+      status: stream.status,
+      health: streamHealth.get(streamKey)
+    });
+  } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
@@ -261,22 +300,33 @@ app.get('/api/streams/:streamKey/health', (req, res) => {
   }
 });
 
-// Enhanced RTSP to RTMP conversion function with detailed logging
+// Enhanced RTSP to HLS conversion function with detailed logging
 function startRTSPToRTMP(rtspUrl, rtmpUrl, username, password, quality = 'medium') {
   const authUrl = username && password
     ? rtspUrl.replace('rtsp://', `rtsp://${username}:${password}@`)
     : rtspUrl;
 
   const logSafeUrl = authUrl.replace(/\/\/.*:.*@/, '//***:***@');
-  log.info(`🎬 Starting RTSP to RTMP conversion: ${logSafeUrl} -> ${rtmpUrl} (Quality: ${quality})`);
-
-  const ffmpegOptions = config.getFFmpegOptions(authUrl, 'rtmp', quality);
   const streamKey = rtmpUrl.split('/').pop();
+  
+  // Create HLS output directory
+  const hlsDir = path.join(config.storage.mediaRoot, 'live', streamKey);
+  if (!fs.existsSync(hlsDir)) {
+    fs.mkdirSync(hlsDir, { recursive: true });
+  }
+  
+  const hlsPath = path.join(hlsDir, 'index.m3u8');
+  log.info(`🎬 Starting RTSP to HLS conversion: ${logSafeUrl} -> ${hlsPath} (Quality: ${quality})`);
+
+  const ffmpegOptions = config.getFFmpegOptions(authUrl, 'hls', quality);
 
   const ffmpegProcess = ffmpeg(authUrl)
     .inputOptions(ffmpegOptions.input)
-    .outputOptions(ffmpegOptions.output)
-    .output(rtmpUrl)
+    .outputOptions([
+      ...ffmpegOptions.output,
+      '-hls_segment_filename', path.join(hlsDir, 'segment_%03d.ts')
+    ])
+    .output(hlsPath)
     .on('start', (commandLine) => {
       log.info(`✅ FFmpeg started for ${streamKey}: ${commandLine.replace(/rtsp:\/\/.*:.*@/, 'rtsp://***:***@')}`);
       
@@ -430,16 +480,10 @@ function handleWebRTCMessage(ws, streamKey, data) {
 }
 
 function handleWebRTCOffer(ws, streamKey, offer) {
-  // In a real implementation, this would set up WebRTC peer connection
-  // For now, we'll send back a mock answer
-  const answer = {
-    type: 'answer',
-    sdp: 'mock-sdp-answer'
-  };
-  
+  // WebRTC disabled - send error response
   ws.send(JSON.stringify({
-    type: 'answer',
-    answer: answer
+    type: 'error',
+    error: 'WebRTC streaming is currently disabled. Please use HLS instead.'
   }));
 }
 
