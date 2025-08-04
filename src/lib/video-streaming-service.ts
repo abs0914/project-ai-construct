@@ -57,16 +57,8 @@ export class VideoStreamingService {
         return;
       }
 
-      // Check media server connectivity first
-      console.log('Checking media server connectivity...');
-      const { mediaStreamService } = await import('./services/media-stream-service');
-      const isConnected = await mediaStreamService.checkConnectivity();
-      
-      if (!isConnected) {
-        console.warn('Media server is not accessible, falling back to mock service');
-        await this.connectWithProtocol('mock');
-        return;
-      }
+      // Skip connectivity check and try direct HLS connection
+      console.log('Attempting direct HLS connection to media server...');
 
       // Try to start the stream on the media server
       try {
