@@ -74,6 +74,10 @@ upstream siteguard_media_server {
     server 127.0.0.1:3001;
 }
 
+upstream siteguard_media_http {
+    server 127.0.0.1:8000;
+}
+
 upstream siteguard_onvif_server {
     server 127.0.0.1:3002;
 }
@@ -133,9 +137,9 @@ server {
         proxy_connect_timeout 75s;
     }
     
-    # HLS Streaming Support
+    # HLS Streaming Support - Route to Node Media Server HTTP port
     location ~ ^/live/(.+)\.m3u8$ {
-        proxy_pass http://siteguard_media_server/live/$1.m3u8;
+        proxy_pass http://siteguard_media_http/live/$1.m3u8;
         proxy_http_version 1.1;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
@@ -144,10 +148,10 @@ server {
         add_header Cache-Control no-cache;
         add_header Access-Control-Allow-Origin "*";
     }
-    
-    # HLS Segment Support
+
+    # HLS Segment Support - Route to Node Media Server HTTP port
     location ~ ^/live/(.+)\.ts$ {
-        proxy_pass http://siteguard_media_server/live/$1.ts;
+        proxy_pass http://siteguard_media_http/live/$1.ts;
         proxy_http_version 1.1;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
@@ -272,6 +276,10 @@ upstream siteguard_media_server {
     server 127.0.0.1:3001;
 }
 
+upstream siteguard_media_http {
+    server 127.0.0.1:8000;
+}
+
 upstream siteguard_onvif_server {
     server 127.0.0.1:3002;
 }
@@ -354,9 +362,9 @@ server {
         proxy_connect_timeout 75s;
     }
     
-    # HLS Streaming Support
+    # HLS Streaming Support - Route to Node Media Server HTTP port
     location ~ ^/live/(.+)\.m3u8$ {
-        proxy_pass http://siteguard_media_server/live/$1.m3u8;
+        proxy_pass http://siteguard_media_http/live/$1.m3u8;
         proxy_http_version 1.1;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
@@ -365,10 +373,10 @@ server {
         add_header Cache-Control no-cache;
         add_header Access-Control-Allow-Origin "*";
     }
-    
-    # HLS Segment Support
+
+    # HLS Segment Support - Route to Node Media Server HTTP port
     location ~ ^/live/(.+)\.ts$ {
-        proxy_pass http://siteguard_media_server/live/$1.ts;
+        proxy_pass http://siteguard_media_http/live/$1.ts;
         proxy_http_version 1.1;
         proxy_set_header Host \$host;
         proxy_set_header X-Real-IP \$remote_addr;
