@@ -150,7 +150,7 @@ export class VideoStreamingService {
 
     const webrtcConfig: WebRTCConfig = {
       streamKey: `camera_${this.config.cameraId}`,
-      signalingUrl: `ws://localhost:8001/webrtc/camera_${this.config.cameraId}`,
+      signalingUrl: `ws://api.aiconstructpro.com:8001/webrtc/camera_${this.config.cameraId}`,
     };
 
     this.webrtcClient = new WebRTCClient(webrtcConfig);
@@ -190,7 +190,7 @@ export class VideoStreamingService {
     if (!this.videoElement) throw new Error('Video element not available');
 
     const hlsConfig: HLSConfig = {
-      streamUrl: `http://localhost:8000/live/camera_${this.config.cameraId}/index.m3u8`,
+      streamUrl: `http://api.aiconstructpro.com:8000/live/camera_${this.config.cameraId}/index.m3u8`,
       autoplay: this.config.autoplay ?? true,
       muted: this.config.muted ?? true,
     };

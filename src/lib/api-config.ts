@@ -28,9 +28,9 @@ export const API_CONFIG = {
  */
 export const getStreamUrl = (cameraId: string, format: 'hls' | 'webrtc' = 'hls') => {
   if (format === 'hls') {
-    return `${API_CONFIG.mediaServer}/stream/${cameraId}/index.m3u8`;
+    return `http://api.aiconstructpro.com:8000/live/${cameraId}/index.m3u8`;
   } else {
-    return `${API_CONFIG.mediaServer}/webrtc/${cameraId}`;
+    return `ws://api.aiconstructpro.com:8001/webrtc/${cameraId}`;
   }
 };
 
