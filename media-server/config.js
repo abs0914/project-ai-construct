@@ -202,7 +202,13 @@ const config = {
   security: {
     enableAuth: false, // Enable authentication for API endpoints
     apiKey: process.env.MEDIA_SERVER_API_KEY || 'your-api-key-here',
-    allowedOrigins: ['*'], // CORS allowed origins
+    allowedOrigins: [
+      'https://aiconstructpro.com',
+      'https://www.aiconstructpro.com',
+      'https://preview--project-ai-construct.lovable.app',
+      'http://localhost:5173',
+      'http://localhost:3000'
+    ], // CORS allowed origins
     maxConcurrentStreams: 10 // Maximum concurrent streams per server
   },
 

@@ -387,6 +387,9 @@ class AuthMiddleware {
   corsMiddleware() {
     return (req, res, next) => {
       const allowedOrigins = [
+        'https://aiconstructpro.com',
+        'https://www.aiconstructpro.com',
+        'https://preview--project-ai-construct.lovable.app',
         'http://localhost:5173',
         'http://localhost:3000',
         'https://siteguard.app'

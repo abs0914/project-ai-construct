@@ -130,12 +130,17 @@ app.post('/api/test/stream', async (req, res) => {
     const rtmpUrl = `rtmp://localhost:1935/live/${testStreamKey}`;
     const ffmpegProcess = startRTSPToRTMP(testRtspUrl, rtmpUrl, null, null, 'medium');
     
+    // Get the public domain from environment or use default
+    const publicDomain = process.env.PUBLIC_URL || process.env.DOMAIN || 'https://api.aiconstructpro.com';
+    const hlsUrl = `${publicDomain}/live/${testStreamKey}/index.m3u8`;
+    const webrtcUrl = `${publicDomain.replace('https://', 'wss://').replace('http://', 'ws://')}/webrtc/${testStreamKey}`;
+
     activeStreams.set(testStreamKey, {
       cameraId: 'test',
       rtspUrl: testRtspUrl,
       rtmpUrl,
-      hlsUrl: `http://localhost:8000/live/${testStreamKey}/index.m3u8`,
-      webrtcUrl: `ws://localhost:8001/webrtc/${testStreamKey}`,
+      hlsUrl,
+      webrtcUrl,
       process: ffmpegProcess,
       startTime: new Date(),
       status: 'starting'
@@ -146,8 +151,8 @@ app.post('/api/test/stream', async (req, res) => {
       streamKey: testStreamKey,
       message: 'Test stream started with Big Buck Bunny',
       urls: {
-        hls: `http://localhost:8000/live/${testStreamKey}/index.m3u8`,
-        webrtc: `ws://localhost:8001/webrtc/${testStreamKey}`
+        hls: hlsUrl,
+        webrtc: webrtcUrl
       }
     });
   } catch (error) {
@@ -183,12 +188,17 @@ app.post('/api/streams/:cameraId/start', async (req, res) => {
     // Start RTSP to RTMP conversion with enhanced logging
     const ffmpegProcess = startRTSPToRTMP(rtspUrl, rtmpUrl, username, password);
     
+    // Get the public domain from environment or use default
+    const publicDomain = process.env.PUBLIC_URL || process.env.DOMAIN || 'https://api.aiconstructpro.com';
+    const hlsUrl = `${publicDomain}/live/${streamKey}/index.m3u8`;
+    const webrtcUrl = `${publicDomain.replace('https://', 'wss://').replace('http://', 'ws://')}/webrtc/${streamKey}`;
+
     activeStreams.set(streamKey, {
       cameraId,
       rtspUrl,
       rtmpUrl,
-      hlsUrl: `http://localhost:8000/live/${streamKey}/index.m3u8`,
-      webrtcUrl: `ws://localhost:8001/webrtc/${streamKey}`,
+      hlsUrl,
+      webrtcUrl,
       process: ffmpegProcess,
       startTime: new Date(),
       status: 'starting'
@@ -204,14 +214,14 @@ app.post('/api/streams/:cameraId/start', async (req, res) => {
     });
 
     log.info(`Stream ${streamKey} initialization complete`);
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       streamKey,
       cameraId,
       urls: {
-        hls: `http://localhost:8000/live/${streamKey}/index.m3u8`,
-        webrtc: `ws://localhost:8001/webrtc/${streamKey}`
+        hls: hlsUrl,
+        webrtc: webrtcUrl
       },
       message: 'Stream started successfully. Wait 3-5 seconds for HLS segments to be generated.'
     });
