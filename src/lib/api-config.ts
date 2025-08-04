@@ -7,6 +7,9 @@ export const API_CONFIG = {
   // Base API URL pointing to Contabo VPS
   baseURL: import.meta.env.VITE_API_BASE_URL || 'https://api.aiconstructpro.com',
   
+  // HLS streaming base URL
+  hlsBaseURL: import.meta.env.VITE_HLS_BASE_URL || 'https://api.aiconstructpro.com/live',
+  
   // Individual service URLs
   mediaServer: import.meta.env.VITE_MEDIA_SERVER_URL || 'https://api.aiconstructpro.com/api/media',
   onvifServer: import.meta.env.VITE_ONVIF_SERVER_URL || 'https://api.aiconstructpro.com/api/onvif',
@@ -29,9 +32,9 @@ export const API_CONFIG = {
 export const getStreamUrl = (cameraId: string, format: 'hls' | 'webrtc' = 'hls') => {
   const streamKey = `camera_${cameraId}`;
   if (format === 'hls') {
-    return `https://api.aiconstructpro.com/live/${streamKey}/index.m3u8`;
+    return `${API_CONFIG.hlsBaseURL}/${streamKey}/index.m3u8`;
   } else {
-    return `wss://api.aiconstructpro.com/webrtc/${streamKey}`;
+    return `${API_CONFIG.websocketURL}/webrtc/${streamKey}`;
   }
 };
 
