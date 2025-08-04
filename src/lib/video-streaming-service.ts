@@ -82,51 +82,44 @@ export class VideoStreamingService {
 
   private async startMediaServerStream(): Promise<{ webrtcUrl: string; hlsUrl: string }> {
     try {
-      console.log('Starting media server stream...');
+      console.log('🎥 Starting stream via direct media server API...');
       
-      // First attempt: Direct API call to media server
-      try {
-        const { mediaStreamService } = await import('./services/media-stream-service');
-        
-        const stream = await mediaStreamService.startStream({
-          cameraId: this.config.cameraId,
-          rtspUrl: this.config.rtspUrl || '',
+      // Use direct media server API following the correct flow
+      const response = await fetch(`https://api.aiconstructpro.com/api/streams/${this.config.cameraId}/start`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          rtspUrl: this.config.rtspUrl,
           username: this.config.username,
-          password: this.config.password,
-          quality: 'medium'
-        });
-        
-        console.log('Media server stream started via direct API:', stream);
-        return {
-          hlsUrl: stream.hlsUrl || `http://api.aiconstructpro.com:8000/live/${stream.streamKey}/index.m3u8`,
-          webrtcUrl: stream.webrtcUrl || `ws://api.aiconstructpro.com:8001/webrtc/${stream.streamKey}`
-        };
-      } catch (directApiError) {
-        console.warn('Direct API call failed, trying Supabase function:', directApiError);
-        
-        // Fallback: Supabase edge function
-        const { data, error } = await supabase.functions.invoke('video-streaming', {
-          body: {
-            action: 'start',
-            cameraId: this.config.cameraId,
-            rtspUrl: this.config.rtspUrl,
-            username: this.config.username,
-            password: this.config.password,
-          },
-        });
+          password: this.config.password
+        })
+      });
 
-        if (error || !data?.success) {
-          throw new Error(`All stream start methods failed. Direct API: ${directApiError}, Supabase: ${error?.message || data?.error || 'Unknown error'}`);
-        }
-
-        console.log('Media server stream started via Supabase function:', data);
-        return {
-          hlsUrl: data.urls?.hls || '',
-          webrtcUrl: data.urls?.webrtc || ''
-        };
+      if (!response.ok) {
+        throw new Error(`Failed to start stream: ${response.status} ${response.statusText}`);
       }
+
+      const data = await response.json();
+      console.log('✅ Stream started successfully:', data);
+      
+      // Wait for HLS segments to be generated (as recommended)
+      console.log('⏳ Waiting for HLS segments to be generated...');
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      // Ensure URLs use the correct domain
+      const hlsUrl = data.urls.hls.replace('localhost:8000', 'api.aiconstructpro.com');
+      const webrtcUrl = data.urls.webrtc.replace('localhost:8000', 'api.aiconstructpro.com');
+      
+      console.log('🎬 Stream URLs ready:', { hlsUrl, webrtcUrl });
+      
+      return {
+        hlsUrl,
+        webrtcUrl
+      };
     } catch (error) {
-      console.error('Media server stream start failed:', error);
+      console.error('❌ Media server stream start failed:', error);
       throw error;
     }
   }
