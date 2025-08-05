@@ -585,6 +585,36 @@ export const V380RemoteTest: React.FC<V380RemoteTestProps> = ({
                 </Card>
               )}
 
+              {isStreaming && streamUrls && (
+                <Card className="p-4">
+                  <h4 className="font-medium mb-4 flex items-center gap-2">
+                    <Monitor className="w-4 h-4" />
+                    Live V380 Remote Stream
+                  </h4>
+                  <div className="aspect-video bg-black rounded-lg overflow-hidden">
+                    <video
+                      key={streamUrls.hls}
+                      className="w-full h-full object-cover"
+                      controls
+                      autoPlay
+                      muted
+                      playsInline
+                      onError={(e) => {
+                        console.error('Video playback error:', e);
+                      }}
+                    >
+                      <source src={streamUrls.hls} type="application/x-mpegURL" />
+                      <source src={streamUrls.rtsp} type="video/mp4" />
+                      Your browser does not support the video tag.
+                    </video>
+                  </div>
+                  <div className="mt-2 text-sm text-green-600 flex items-center gap-1">
+                    <Activity className="w-3 h-3" />
+                    Remote camera streaming via VPN - {camera.name}
+                  </div>
+                </Card>
+              )}
+
               <div className="flex gap-2">
                 {!isStreaming ? (
                   <Button onClick={startRemoteStream} disabled={!streamUrls}>

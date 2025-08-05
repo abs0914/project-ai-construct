@@ -244,12 +244,12 @@ async function handleGetStreamUrls(supabaseClient: any, cameraId: string) {
 }
 
 function generateStreamUrls(cameraId: string): V380StreamUrls {
-  // Generate realistic stream URLs for the camera
-  const baseUrl = `https://stream.aiconstructpro.com`;
+  // Generate mock but accessible stream URLs for testing
+  const baseUrl = `https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel`;
   
   return {
-    hls: `${baseUrl}/hls/${cameraId}/playlist.m3u8`,
-    rtsp: `rtsp://stream.aiconstructpro.com:554/${cameraId}/stream1`,
-    webrtc: `${baseUrl}/webrtc/${cameraId}`
+    hls: `${baseUrl}/tears-of-steel.ism/.m3u8`,
+    rtsp: `rtsp://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/tears-of-steel.mp4`,
+    webrtc: `${baseUrl}/tears-of-steel.ism/webrtc`
   };
 }
