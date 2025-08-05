@@ -26,11 +26,13 @@ import { v380Service, V380Camera, V380CaptureStatus, V380RelayStatus } from '@/l
 interface V380SetupProps {
   onStreamStarted?: (cameraId: string, streamUrls: any) => void;
   onStreamStopped?: (cameraId: string) => void;
+  onComplete?: () => void;
 }
 
 export const V380Setup: React.FC<V380SetupProps> = ({
   onStreamStarted,
-  onStreamStopped
+  onStreamStopped,
+  onComplete
 }) => {
   const [camera, setCamera] = useState<Partial<V380Camera>>({
     name: 'V380 Camera',
@@ -112,7 +114,7 @@ export const V380Setup: React.FC<V380SetupProps> = ({
         return {
           ...prev,
           [keys[0]]: {
-            ...prev[keys[0] as keyof V380Camera],
+            ...(prev[keys[0] as keyof V380Camera] as object),
             [keys[1]]: value
           }
         };
@@ -381,7 +383,7 @@ export const V380Setup: React.FC<V380SetupProps> = ({
                 </div>
                 <div>
                   <Label htmlFor="outputFormat">Output Format</Label>
-                  <Select value={outputFormat} onValueChange={setOutputFormat}>
+                  <Select value={outputFormat} onValueChange={(value: 'hls' | 'rtsp' | 'webrtc') => setOutputFormat(value)}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>

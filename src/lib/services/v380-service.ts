@@ -91,7 +91,7 @@ export class V380Service {
         options
       });
 
-      return response.status;
+      return (response as any).status;
     } catch (error) {
       console.error('Failed to start V380 capture:', error);
       throw new Error(`Failed to start V380 capture: ${error}`);
@@ -123,7 +123,7 @@ export class V380Service {
       
       const response = await apiClient.get(url);
       
-      return cameraId ? response.status : response.captures;
+      return cameraId ? (response as any).status : (response as any).captures;
     } catch (error) {
       console.error('Failed to get V380 capture status:', error);
       throw new Error(`Failed to get V380 capture status: ${error}`);
@@ -145,8 +145,8 @@ export class V380Service {
       });
 
       return {
-        relayId: response.relayId,
-        streamUrls: response.streamUrls
+        relayId: (response as any).relayId,
+        streamUrls: (response as any).streamUrls
       };
     } catch (error) {
       console.error('Failed to start V380 relay:', error);
@@ -179,7 +179,7 @@ export class V380Service {
       
       const response = await apiClient.get(url);
       
-      return response.status;
+      return (response as any).status;
     } catch (error) {
       console.error('Failed to get V380 relay status:', error);
       throw new Error(`Failed to get V380 relay status: ${error}`);
@@ -193,7 +193,7 @@ export class V380Service {
     try {
       const response = await apiClient.get(`${this.baseUrl}/api/v380/streams/${cameraId}`);
       
-      return response.streamUrls;
+      return (response as any).streamUrls;
     } catch (error) {
       console.error('Failed to get V380 stream URLs:', error);
       throw new Error(`Failed to get V380 stream URLs: ${error}`);

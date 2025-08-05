@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Camera, Play, Pause, RotateCcw, Maximize2, Settings, Wifi, WifiOff, Activity, Signal } from 'lucide-react';
+import { Camera, Play, Pause, RotateCcw, Maximize2, Settings, Wifi, WifiOff, Activity, Signal, Monitor } from 'lucide-react';
 import { VideoStreamingService, UnifiedStreamStats, StreamingProtocol } from '@/lib/video-streaming-service';
 
 interface Camera {
@@ -201,7 +201,15 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="text-sm font-medium">{camera.name}</CardTitle>
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-sm font-medium">{camera.name}</CardTitle>
+              {camera.name?.includes('V380') && (
+                <Badge variant="outline" className="text-xs bg-blue-50 border-blue-200 text-blue-700">
+                  <Monitor className="h-3 w-3 mr-1" />
+                  V380
+                </Badge>
+              )}
+            </div>
             <p className="text-xs text-muted-foreground">{camera.location}</p>
             {currentProtocol && (
               <p className="text-xs text-blue-600 font-medium uppercase">{currentProtocol}</p>

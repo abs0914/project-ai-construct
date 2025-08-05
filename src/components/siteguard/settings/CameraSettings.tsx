@@ -6,10 +6,12 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Camera, Plus, Trash2, Settings } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Camera, Plus, Trash2, Settings, Monitor } from 'lucide-react';
 import { useSiteGuardData } from '@/hooks/useSiteGuardData';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { V380Setup } from '../V380Setup';
 
 interface CameraSettingsProps {
   onSettingsChange: () => void;
@@ -119,8 +121,15 @@ export const CameraSettings: React.FC<CameraSettingsProps> = ({ onSettingsChange
 
   return (
     <div className="space-y-6">
-      {/* Add New Camera */}
-      <Card>
+      <Tabs defaultValue="onvif" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="onvif">ONVIF Cameras</TabsTrigger>
+          <TabsTrigger value="v380">V380 Cameras</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="onvif" className="space-y-6">
+          {/* Add New ONVIF Camera */}
+          <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Plus className="h-5 w-5" />
@@ -272,6 +281,32 @@ export const CameraSettings: React.FC<CameraSettingsProps> = ({ onSettingsChange
           </div>
         </CardContent>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="v380" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Monitor className="h-5 w-5" />
+                V380 Camera Setup
+              </CardTitle>
+              <CardDescription>
+                Configure V380 cameras using PC software integration for advanced streaming capabilities
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <V380Setup onComplete={() => {
+                refetch.cameras();
+                onSettingsChange();
+                toast({
+                  title: "V380 Setup Complete",
+                  description: "V380 camera has been configured and added to your system",
+                });
+              }} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
