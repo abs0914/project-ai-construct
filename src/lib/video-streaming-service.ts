@@ -1,6 +1,7 @@
 import { WebRTCClient, StreamConfig as WebRTCConfig, StreamStats as WebRTCStats } from './webrtc-client';
 import { HLSClient, HLSConfig, HLSStats } from './hls-client';
 import { MockVideoService, MockStreamStats } from './mock-video-service';
+import { V380Service } from './services/v380-service';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface StreamingConfig {
@@ -9,6 +10,7 @@ export interface StreamingConfig {
   rtspUrl: string;
   username?: string;
   password?: string;
+  port?: number; // Add port for V380 cameras
   preferredProtocol?: 'webrtc' | 'hls' | 'auto';
   autoplay?: boolean;
   muted?: boolean;
@@ -31,12 +33,14 @@ export class VideoStreamingService {
   private webrtcClient: WebRTCClient | null = null;
   private hlsClient: HLSClient | null = null;
   private mockClient: MockVideoService | null = null;
+  private v380Service: V380Service;
   private currentProtocol: StreamingProtocol | null = null;
   private config: StreamingConfig;
   private videoElement: HTMLVideoElement | null = null;
   private mediaServerUrl = 'https://aooppgijnjxbsylvwukx.supabase.co/functions/v1/video-streaming';
   private isDevelopmentMode = false; // Test real streaming with correct URLs
   private disableWebRTC = true; // Disable WebRTC, use HLS-only approach
+  private currentRelayId?: string;
   
   // Event callbacks
   private onStatsCallback?: (stats: UnifiedStreamStats) => void;
@@ -46,6 +50,7 @@ export class VideoStreamingService {
 
   constructor(config: StreamingConfig) {
     this.config = config;
+    this.v380Service = new V380Service();
   }
 
   async startStream(videoElement: HTMLVideoElement): Promise<void> {
@@ -56,15 +61,15 @@ export class VideoStreamingService {
       console.log('🔍 Camera ID being checked:', this.config.cameraId);
       console.log('🔍 Camera name being checked:', this.config.cameraName);
       
-      // For V380 cameras, use demo streams directly without media server
+      // For V380 cameras, use V380 service for live streams
       // Check for V380 patterns (case insensitive) in both ID and name
       const isV380Camera = this.config.cameraId.toLowerCase().includes('v380') || 
                           this.config.cameraId.toLowerCase().includes('remote-v380') ||
                           (this.config.cameraName && this.config.cameraName.toLowerCase().includes('v380'));
       
       if (isV380Camera) {
-        console.log('✅ V380 camera detected via', this.config.cameraName ? 'name' : 'ID', ', using demo HLS stream');
-        await this.connectWithDemoStream();
+        console.log('✅ V380 camera detected via', this.config.cameraName ? 'name' : 'ID', ', starting live V380 stream');
+        await this.startV380LiveStream();
         return;
       } else {
         console.log('❌ Non-V380 camera detected, trying media server');
@@ -77,7 +82,7 @@ export class VideoStreamingService {
         await this.connectWithProtocol(protocol);
       } catch (mediaServerError) {
         console.warn('Media server stream failed, using demo stream:', mediaServerError);
-        await this.connectWithDemoStream();
+        await this.connectWithProtocol('mock');
       }
       
     } catch (error) {
@@ -331,75 +336,86 @@ export class VideoStreamingService {
     }
   }
 
-  private async connectWithDemoStream(): Promise<void> {
+  private async startV380LiveStream(): Promise<void> {
     if (!this.videoElement) throw new Error('Video element not available');
 
-    // Use reliable demo HLS streams with fallbacks
-    const demoStreamUrls = [
-      'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8', // Apple's reliable demo
-      'https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8', // BitDash demo
-      'https://moctobpltc-i.akamaihd.net/hls/live/571329/eight/playlist.m3u8' // MUX demo
-    ];
-
-    // Try each demo stream URL until one works
-    for (let i = 0; i < demoStreamUrls.length; i++) {
-      const streamUrl = demoStreamUrls[i];
-      console.log(`🔄 Trying demo stream ${i + 1}/${demoStreamUrls.length}: ${streamUrl}`);
-      
-      try {
-        this.videoElement.src = streamUrl;
-        this.videoElement.load();
-        
-        // Add timeout for loading
-        const loadPromise = new Promise<void>((resolve, reject) => {
-          const onLoadedData = () => {
-            this.videoElement!.removeEventListener('loadeddata', onLoadedData);
-            this.videoElement!.removeEventListener('error', onError);
-            resolve();
-          };
-          
-          const onError = (event: Event) => {
-            this.videoElement!.removeEventListener('loadeddata', onLoadedData);
-            this.videoElement!.removeEventListener('error', onError);
-            reject(new Error(`Failed to load stream: ${streamUrl}`));
-          };
-          
-          this.videoElement!.addEventListener('loadeddata', onLoadedData);
-          this.videoElement!.addEventListener('error', onError);
-          
-          // 10 second timeout
-          setTimeout(() => {
-            this.videoElement!.removeEventListener('loadeddata', onLoadedData);
-            this.videoElement!.removeEventListener('error', onError);
-            reject(new Error(`Timeout loading stream: ${streamUrl}`));
-          }, 10000);
-        });
-        
-        await loadPromise;
-        
-        if (this.config.autoplay) {
-          await this.videoElement.play();
+    try {
+      // Create V380 camera configuration from the streaming config
+      const v380Camera = {
+        id: this.config.cameraId,
+        name: this.config.cameraName || 'V380 Camera',
+        ip: this.config.rtspUrl?.split('://')[1]?.split(':')[0] || 'localhost',
+        port: this.config.port || 8800,
+        model: 'V380 Pro',
+        firmware: '1.0.0',
+        credentials: {
+          username: this.config.username || 'admin',
+          password: this.config.password || 'admin'
+        },
+        streamSettings: {
+          rtspPath: '/stream',
+          quality: 'high' as const,
+          resolution: '1920x1080',
+          frameRate: 30,
+          bitrate: 2000000,
+          audioEnabled: true
+        },
+        protocolSettings: {
+          version: '2.0',
+          encryption: false,
+          compression: true,
+          heartbeatInterval: 30000,
+          reconnectInterval: 5000,
+          maxRetries: 3
+        },
+        capabilities: {
+          ptz: false,
+          nightVision: true,
+          motionDetection: true,
+          audioSupport: true,
+          recordingSupport: true
+        },
+        status: {
+          enabled: true,
+          lastSeen: null,
+          connectionStatus: 'disconnected' as const
         }
-        
-        this.currentProtocol = 'hls';
-        this.handleStateChange('connected');
-        this.handleProtocolSwitch('hls');
-        
-        // Start stats collection
-        this.startDemoStatsCollection();
-        
-        console.log(`✅ Demo stream ${i + 1} connected successfully`);
-        return; // Success, exit the loop
-        
-      } catch (error) {
-        console.error(`❌ Demo stream ${i + 1} failed:`, error);
-        // Continue to next stream URL
+      };
+
+      console.log('🔄 Starting V380 live stream for camera:', this.config.cameraId);
+      
+      // Start V380 streaming workflow
+      const streamResult = await this.v380Service.startV380Stream(
+        this.config.cameraId, 
+        v380Camera, 
+        'hls'
+      );
+      
+      // Store relay ID for cleanup
+      this.currentRelayId = streamResult.relayId;
+      
+      console.log('✅ V380 stream started, connecting to HLS URL:', streamResult.streamUrls.hls);
+      
+      // Connect to the HLS stream URL
+      this.videoElement.src = streamResult.streamUrls.hls;
+      this.videoElement.load();
+      
+      if (this.config.autoplay) {
+        await this.videoElement.play();
       }
+      
+      this.currentProtocol = 'hls';
+      this.handleStateChange('connected');
+      this.handleProtocolSwitch('hls');
+      
+      console.log('✅ V380 live stream connected successfully');
+      
+    } catch (error) {
+      console.error('V380 live stream failed:', error);
+      // Fall back to mock as last resort
+      console.log('Falling back to mock video for V380 camera');
+      await this.connectWithProtocol('mock');
     }
-    
-    // If all demo streams failed, fall back to mock
-    console.log('All demo streams failed, falling back to mock');
-    await this.connectWithProtocol('mock');
   }
 
   private startDemoStatsCollection(): void {
@@ -526,29 +542,44 @@ export class VideoStreamingService {
 
   // Cleanup
   async stopStream(): Promise<void> {
-    // Stop the stream on the media server (only if not in mock mode)
-    if (this.currentProtocol !== 'mock') {
-      try {
-        // Try direct API first
-        const { mediaStreamService } = await import('./services/media-stream-service');
-        const stream = mediaStreamService.getStreamByCameraId(this.config.cameraId);
-        
-        if (stream) {
-          await mediaStreamService.stopStream(stream.streamKey);
-          console.log('Stream stopped via direct API');
-        } else {
-          // Fallback to Supabase function
-          await supabase.functions.invoke('video-streaming', {
-            body: {
-              action: 'stop',
-              cameraId: this.config.cameraId,
-            },
-          });
-          console.log('Stream stopped via Supabase function');
+    try {
+      // Stop V380 stream if we have a relay ID
+      if (this.currentRelayId) {
+        try {
+          await this.v380Service.stopV380Stream(this.config.cameraId, this.currentRelayId);
+          this.currentRelayId = undefined;
+          console.log('✅ V380 stream stopped successfully');
+        } catch (error) {
+          console.warn('V380 stream stop error:', error);
         }
-      } catch (error) {
-        console.error('Error stopping media server stream:', error);
       }
+      
+      // Stop the stream on the media server (only if not in mock mode)
+      if (this.currentProtocol !== 'mock') {
+        try {
+          // Try direct API first
+          const { mediaStreamService } = await import('./services/media-stream-service');
+          const stream = mediaStreamService.getStreamByCameraId(this.config.cameraId);
+          
+          if (stream) {
+            await mediaStreamService.stopStream(stream.streamKey);
+            console.log('Stream stopped via direct API');
+          } else {
+            // Fallback to Supabase function
+            await supabase.functions.invoke('video-streaming', {
+              body: {
+                action: 'stop',
+                cameraId: this.config.cameraId,
+              },
+            });
+            console.log('Stream stopped via Supabase function');
+          }
+        } catch (error) {
+          console.error('Error stopping media server stream:', error);
+        }
+      }
+    } catch (error) {
+      console.warn('Error stopping stream:', error);
     }
 
     // Cleanup clients
