@@ -34,6 +34,9 @@ serve(async (req) => {
     console.log(`Network discovery action: ${action}`);
 
     switch (action) {
+      case 'get_routers':
+        return await handleGetRouters(supabaseClient);
+      
       case 'discover_cameras_multi_site':
         return await handleMultiSiteDiscovery(supabaseClient, network_segments);
       
@@ -64,6 +67,25 @@ serve(async (req) => {
     )
   }
 })
+
+async function handleGetRouters(supabaseClient: any) {
+  console.log('Getting available routers from database');
+  
+  const { data: routers, error } = await supabaseClient
+    .from('vpn_routers')
+    .select('*')
+    .order('name');
+
+  if (error) throw error;
+
+  return new Response(
+    JSON.stringify({ 
+      success: true, 
+      routers: routers || []
+    }),
+    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
+}
 
 async function handleMultiSiteDiscovery(supabaseClient: any, networkSegments: string[]) {
   console.log('Discovering cameras across multiple network segments:', networkSegments);
