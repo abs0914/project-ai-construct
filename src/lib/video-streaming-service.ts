@@ -51,11 +51,20 @@ export class VideoStreamingService {
     this.videoElement = videoElement;
 
     try {
+      // Add debugging to see camera ID
+      console.log('🔍 Camera ID being checked:', this.config.cameraId);
+      
       // For V380 cameras, use demo streams directly without media server
-      if (this.config.cameraId.includes('V380') || this.config.cameraId.includes('v380')) {
-        console.log('V380 camera detected, using demo HLS stream');
+      // Check for V380 patterns (case insensitive)
+      const isV380Camera = this.config.cameraId.toLowerCase().includes('v380') || 
+                          this.config.cameraId.toLowerCase().includes('remote-v380');
+      
+      if (isV380Camera) {
+        console.log('✅ V380 camera detected, using demo HLS stream');
         await this.connectWithDemoStream();
         return;
+      } else {
+        console.log('❌ Non-V380 camera detected, trying media server');
       }
 
       // For other cameras, try media server first
