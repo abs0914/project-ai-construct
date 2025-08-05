@@ -244,12 +244,15 @@ async function handleGetStreamUrls(supabaseClient: any, cameraId: string) {
 }
 
 function generateStreamUrls(cameraId: string): V380StreamUrls {
-  // Generate mock but accessible stream URLs for testing
-  const baseUrl = `https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel`;
+  // Generate real stream URLs based on the camera relay configuration
+  // These URLs should point to your actual streaming infrastructure
+  const streamingDomain = Deno.env.get('STREAMING_DOMAIN') || 'localhost:3001';
+  const protocol = streamingDomain.includes('localhost') ? 'http' : 'https';
+  const rtspPort = Deno.env.get('RTSP_PORT') || '8554';
   
   return {
-    hls: `${baseUrl}/tears-of-steel.ism/.m3u8`,
-    rtsp: `rtsp://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/tears-of-steel.mp4`,
-    webrtc: `${baseUrl}/tears-of-steel.ism/webrtc`
+    hls: `${protocol}://${streamingDomain}/v380-streams/hls/${cameraId}/index.m3u8`,
+    rtsp: `rtsp://${streamingDomain}:${rtspPort}/v380/${cameraId}`,
+    webrtc: `${protocol}://${streamingDomain}/v380-streams/webrtc/${cameraId}`
   };
 }
