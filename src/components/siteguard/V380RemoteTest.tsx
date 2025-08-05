@@ -81,20 +81,47 @@ export const V380RemoteTest: React.FC<V380RemoteTestProps> = ({
 
   const loadNetworkResources = async () => {
     try {
-      // This would call your network server API
-      // For demo, using mock data
-      setAvailableRouters([
-        { id: 'glinet-001', name: 'GL.iNET Router 001', location: 'Site A', zerotierIp: '10.147.17.1' },
-        { id: 'glinet-002', name: 'GL.iNET Router 002', location: 'Site B', zerotierIp: '10.147.17.2' },
-        { id: 'glinet-003', name: 'GL.iNET Router 003', location: 'Site C', zerotierIp: '10.147.17.3' }
-      ]);
+      // Load real router data from network discovery
+      const response = await fetch('/api/network-discovery', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'get_routers' })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        // Transform discovered routers to match expected format
+        const routers = data.routers?.map(router => ({
+          id: router.id || router.name,
+          name: router.name || router.model,
+          location: router.location || 'Unknown',
+          zerotierIp: router.zerotier_ip || router.ip_address
+        })) || [];
+        
+        setAvailableRouters(routers);
+      } else {
+        // Fallback to empty array if discovery fails
+        setAvailableRouters([]);
+      }
 
-      setAvailableNetworks([
-        { id: 'zt-network-001', name: 'SiteGuard Network 1', range: '10.147.17.0/24' },
-        { id: 'zt-network-002', name: 'SiteGuard Network 2', range: '10.147.18.0/24' }
-      ]);
+      // Load ZeroTier networks
+      const ztResponse = await fetch('/api/zerotier-management', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'list_networks' })
+      });
+      
+      if (ztResponse.ok) {
+        const ztData = await ztResponse.json();
+        setAvailableNetworks(ztData.networks || []);
+      } else {
+        setAvailableNetworks([]);
+      }
     } catch (error) {
       console.error('Failed to load network resources:', error);
+      // Set empty arrays on error
+      setAvailableRouters([]);
+      setAvailableNetworks([]);
     }
   };
 
