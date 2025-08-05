@@ -110,6 +110,43 @@ export const V380DirectStream: React.FC<V380DirectStreamProps> = ({
     setIsStreaming(true);
     setError(null);
 
+    // First, check if VPS is available
+    console.log('Checking VPS media server availability...');
+    let vpsAvailable = false;
+    try {
+      const healthCheck = await fetch('https://api.aiconstructpro.com/api/streams', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(5000) // 5 second timeout
+      });
+      vpsAvailable = healthCheck.ok;
+      console.log('VPS media server status:', vpsAvailable ? 'Available' : 'Unavailable');
+    } catch (error) {
+      console.log('VPS media server unavailable:', error.message);
+      vpsAvailable = false;
+    }
+
+    if (!vpsAvailable) {
+      // VPS is down, provide direct RTSP URL immediately
+      const directRtspUrl = `rtsp://${camera.username}:${camera.password}@${camera.zerotierIp || camera.localIp}:${camera.port}${camera.rtspPath}`;
+
+      const directStreamUrls = {
+        hls: null,
+        rtsp: directRtspUrl,
+        webrtc: null
+      };
+
+      setStreamUrls(directStreamUrls);
+      setError(`VPS media server is currently unavailable. Use this direct RTSP URL in your media player: ${directRtspUrl.replace(/\/\/.*:.*@/, '//***:***@')}`);
+
+      if (onStreamStarted) {
+        onStreamStarted(camera.id, directStreamUrls);
+      }
+
+      console.log('✅ Direct RTSP URL provided due to VPS unavailability');
+      return;
+    }
+
     try {
       // For cameras behind GL.iNET router, we need to try multiple approaches
       let rtspUrl;
@@ -197,8 +234,33 @@ export const V380DirectStream: React.FC<V380DirectStreamProps> = ({
 
     } catch (error) {
       console.error('VPS streaming error:', error);
-      setError(`Failed to start VPS stream: ${error.message}`);
-      setIsStreaming(false);
+
+      // If VPS fails, try direct RTSP as fallback
+      console.log('VPS failed, attempting direct RTSP fallback...');
+      try {
+        // Create direct RTSP URL for local testing
+        const directRtspUrl = `rtsp://${camera.username}:${camera.password}@${camera.zerotierIp || camera.localIp}:${camera.port}${camera.rtspPath}`;
+
+        // Set fallback stream URLs for direct RTSP access
+        const fallbackStreamUrls = {
+          hls: null, // Not available in direct mode
+          rtsp: directRtspUrl,
+          webrtc: null // Not available in direct mode
+        };
+
+        setStreamUrls(fallbackStreamUrls);
+        setError(`VPS unavailable. Direct RTSP URL available: ${directRtspUrl.replace(/\/\/.*:.*@/, '//***:***@')}`);
+
+        if (onStreamStarted) {
+          onStreamStarted(camera.id, fallbackStreamUrls);
+        }
+
+        console.log('✅ Direct RTSP fallback ready:', directRtspUrl.replace(/\/\/.*:.*@/, '//***:***@'));
+
+      } catch (fallbackError) {
+        setError(`Failed to start VPS stream: ${error.message}. Fallback also failed: ${fallbackError.message}`);
+        setIsStreaming(false);
+      }
     }
   };
 
