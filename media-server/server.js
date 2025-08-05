@@ -61,7 +61,16 @@ const io = socketIo(server, {
 });
 
 app.use(cors({
-  origin: '*', // Allow all origins for development
+  origin: [
+    'https://aiconstructpro.com',
+    'https://www.aiconstructpro.com',
+    'https://preview--project-ai-construct.lovable.app',
+    'https://preview--ai-construct-pro.lovable.app',
+    'https://66748df0-6d8e-4361-b644-77957af188bc.lovableproject.com',
+    'http://localhost:5173',
+    'http://localhost:3000',
+    '*' // Allow all origins for development
+  ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-client-info', 'apikey']
