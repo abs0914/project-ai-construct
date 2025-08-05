@@ -334,31 +334,72 @@ export class VideoStreamingService {
   private async connectWithDemoStream(): Promise<void> {
     if (!this.videoElement) throw new Error('Video element not available');
 
-    try {
-      // Use a working demo HLS stream
-      const demoStreamUrl = 'https://demo.unified-streaming.com/k8s/features/stable/video/tears-of-steel/tears-of-steel.ism/.m3u8';
+    // Use reliable demo HLS streams with fallbacks
+    const demoStreamUrls = [
+      'https://devstreaming-cdn.apple.com/videos/streaming/examples/img_bipbop_adv_example_fmp4/master.m3u8', // Apple's reliable demo
+      'https://bitdash-a.akamaihd.net/content/sintel/hls/playlist.m3u8', // BitDash demo
+      'https://moctobpltc-i.akamaihd.net/hls/live/571329/eight/playlist.m3u8' // MUX demo
+    ];
+
+    // Try each demo stream URL until one works
+    for (let i = 0; i < demoStreamUrls.length; i++) {
+      const streamUrl = demoStreamUrls[i];
+      console.log(`🔄 Trying demo stream ${i + 1}/${demoStreamUrls.length}: ${streamUrl}`);
       
-      this.videoElement.src = demoStreamUrl;
-      this.videoElement.load();
-      
-      if (this.config.autoplay) {
-        await this.videoElement.play();
+      try {
+        this.videoElement.src = streamUrl;
+        this.videoElement.load();
+        
+        // Add timeout for loading
+        const loadPromise = new Promise<void>((resolve, reject) => {
+          const onLoadedData = () => {
+            this.videoElement!.removeEventListener('loadeddata', onLoadedData);
+            this.videoElement!.removeEventListener('error', onError);
+            resolve();
+          };
+          
+          const onError = (event: Event) => {
+            this.videoElement!.removeEventListener('loadeddata', onLoadedData);
+            this.videoElement!.removeEventListener('error', onError);
+            reject(new Error(`Failed to load stream: ${streamUrl}`));
+          };
+          
+          this.videoElement!.addEventListener('loadeddata', onLoadedData);
+          this.videoElement!.addEventListener('error', onError);
+          
+          // 10 second timeout
+          setTimeout(() => {
+            this.videoElement!.removeEventListener('loadeddata', onLoadedData);
+            this.videoElement!.removeEventListener('error', onError);
+            reject(new Error(`Timeout loading stream: ${streamUrl}`));
+          }, 10000);
+        });
+        
+        await loadPromise;
+        
+        if (this.config.autoplay) {
+          await this.videoElement.play();
+        }
+        
+        this.currentProtocol = 'hls';
+        this.handleStateChange('connected');
+        this.handleProtocolSwitch('hls');
+        
+        // Start stats collection
+        this.startDemoStatsCollection();
+        
+        console.log(`✅ Demo stream ${i + 1} connected successfully`);
+        return; // Success, exit the loop
+        
+      } catch (error) {
+        console.error(`❌ Demo stream ${i + 1} failed:`, error);
+        // Continue to next stream URL
       }
-      
-      this.currentProtocol = 'hls';
-      this.handleStateChange('connected');
-      this.handleProtocolSwitch('hls');
-      
-      // Start stats collection
-      this.startDemoStatsCollection();
-      
-      console.log('✅ Demo stream connected successfully');
-      
-    } catch (error) {
-      console.error('Demo stream connection failed:', error);
-      // Fall back to mock as last resort
-      await this.connectWithProtocol('mock');
     }
+    
+    // If all demo streams failed, fall back to mock
+    console.log('All demo streams failed, falling back to mock');
+    await this.connectWithProtocol('mock');
   }
 
   private startDemoStatsCollection(): void {
