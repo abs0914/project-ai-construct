@@ -7,13 +7,14 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Camera, Plus, Trash2, Settings, Monitor, Globe } from 'lucide-react';
+import { Camera, Plus, Trash2, Settings, Monitor, Globe, Network } from 'lucide-react';
 import { useSiteGuardData } from '@/hooks/useSiteGuardData';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { V380Setup } from '../V380Setup';
 import { V380RemoteTest } from '../V380RemoteTest';
 import { V380DirectStream } from '../V380DirectStream';
+import { ZeroTierNetworkScanner } from '../ZeroTierNetworkScanner';
 
 interface CameraSettingsProps {
   onSettingsChange: () => void;
@@ -124,11 +125,12 @@ export const CameraSettings: React.FC<CameraSettingsProps> = ({ onSettingsChange
   return (
     <div className="space-y-6">
       <Tabs defaultValue="onvif" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="onvif">ONVIF Cameras</TabsTrigger>
           <TabsTrigger value="v380">V380 Setup</TabsTrigger>
           <TabsTrigger value="v380-remote">V380 Remote Test</TabsTrigger>
           <TabsTrigger value="v380-direct">V380 Live Stream</TabsTrigger>
+          <TabsTrigger value="network-scan">Network Scanner</TabsTrigger>
         </TabsList>
 
         <TabsContent value="onvif" className="space-y-6">
@@ -372,6 +374,24 @@ export const CameraSettings: React.FC<CameraSettingsProps> = ({ onSettingsChange
                   description: `Camera ${cameraId} stream has been stopped`,
                 });
               }} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="network-scan" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Network className="h-5 w-5" />
+                ZeroTier Network Scanner
+              </CardTitle>
+              <CardDescription>
+                Discover what devices are connected to your ZeroTier network.
+                Find your V380 camera and verify network connectivity.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ZeroTierNetworkScanner />
             </CardContent>
           </Card>
         </TabsContent>

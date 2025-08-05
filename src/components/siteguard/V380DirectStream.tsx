@@ -29,10 +29,10 @@ export const V380DirectStream: React.FC<V380DirectStreamProps> = ({
   onStreamStopped
 }) => {
   const [camera, setCamera] = useState({
-    id: 'v380-direct-stream',
-    name: 'V380 Direct Camera',
-    zerotierIp: '',
-    localIp: '',
+    id: 'tacloban-motorpool-v380',
+    name: 'Tacloban-Motorpool V380',
+    zerotierIp: '172.30.195.39',
+    localIp: '192.168.8.201',
     port: 554,
     username: 'admin',
     password: 'password',
@@ -111,16 +111,29 @@ export const V380DirectStream: React.FC<V380DirectStreamProps> = ({
     setError(null);
 
     try {
-      // Use ZeroTier IP if available, otherwise local IP
-      const targetIp = camera.zerotierIp || camera.localIp;
-      if (!targetIp) {
+      // For cameras behind GL.iNET router, we need to try multiple approaches
+      let rtspUrl;
+      let connectionMethod;
+
+      if (camera.zerotierIp && camera.localIp) {
+        // Camera is behind a ZeroTier-connected router
+        // Try to access via the local IP through the ZeroTier network
+        rtspUrl = `rtsp://${camera.username}:${camera.password}@${camera.localIp}:${camera.port}${camera.rtspPath}`;
+        connectionMethod = 'router-local-ip';
+        console.log(`Trying camera behind router: ${rtspUrl.replace(/\/\/.*:.*@/, '//***:***@')}`);
+      } else if (camera.zerotierIp) {
+        // Direct ZeroTier access
+        rtspUrl = `rtsp://${camera.username}:${camera.password}@${camera.zerotierIp}:${camera.port}${camera.rtspPath}`;
+        connectionMethod = 'direct-zerotier';
+        console.log(`Trying direct ZeroTier: ${rtspUrl.replace(/\/\/.*:.*@/, '//***:***@')}`);
+      } else if (camera.localIp) {
+        // Local network access
+        rtspUrl = `rtsp://${camera.username}:${camera.password}@${camera.localIp}:${camera.port}${camera.rtspPath}`;
+        connectionMethod = 'local-network';
+        console.log(`Trying local network: ${rtspUrl.replace(/\/\/.*:.*@/, '//***:***@')}`);
+      } else {
         throw new Error('Please provide either ZeroTier IP or Local IP');
       }
-
-      // Create RTSP URL
-      const rtspUrl = `rtsp://${camera.username}:${camera.password}@${targetIp}:${camera.port}${camera.rtspPath}`;
-
-      console.log(`Starting direct V380 stream from: ${rtspUrl}`);
 
       // Step 1: Start V380 capture
       console.log('Starting V380 capture...');
