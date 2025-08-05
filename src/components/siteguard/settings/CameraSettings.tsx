@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { V380Setup } from '../V380Setup';
 import { V380RemoteTest } from '../V380RemoteTest';
+import { V380DirectStream } from '../V380DirectStream';
 
 interface CameraSettingsProps {
   onSettingsChange: () => void;
@@ -123,10 +124,11 @@ export const CameraSettings: React.FC<CameraSettingsProps> = ({ onSettingsChange
   return (
     <div className="space-y-6">
       <Tabs defaultValue="onvif" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="onvif">ONVIF Cameras</TabsTrigger>
           <TabsTrigger value="v380">V380 Setup</TabsTrigger>
           <TabsTrigger value="v380-remote">V380 Remote Test</TabsTrigger>
+          <TabsTrigger value="v380-direct">V380 Live Stream</TabsTrigger>
         </TabsList>
 
         <TabsContent value="onvif" className="space-y-6">
@@ -338,6 +340,36 @@ export const CameraSettings: React.FC<CameraSettingsProps> = ({ onSettingsChange
                 toast({
                   title: "Remote V380 Stream Stopped",
                   description: `Remote camera ${cameraId} stream has been stopped`,
+                });
+              }} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="v380-direct" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Camera className="h-5 w-5" />
+                V380 Live Stream
+              </CardTitle>
+              <CardDescription>
+                Connect directly to your V380 camera for live streaming.
+                Works with cameras on remote networks via ZeroTier or local network.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <V380DirectStream onStreamStarted={(cameraId, streamUrls) => {
+                refetch.cameras();
+                onSettingsChange();
+                toast({
+                  title: "V380 Live Stream Started",
+                  description: `Camera ${cameraId} is now streaming live`,
+                });
+              }} onStreamStopped={(cameraId) => {
+                toast({
+                  title: "V380 Live Stream Stopped",
+                  description: `Camera ${cameraId} stream has been stopped`,
                 });
               }} />
             </CardContent>

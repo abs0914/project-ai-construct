@@ -32,13 +32,18 @@ export class MockVideoService {
 
   async startStream(videoElement: HTMLVideoElement): Promise<void> {
     this.videoElement = videoElement;
-    
+
     try {
+      console.log('🎬 Starting mock video service for camera:', this.config.cameraId);
+
       // Set up mock video source - using a test pattern or placeholder
       await this.setupMockVideo();
       this.startStatsCollection();
       this.handleStateChange('connected');
+
+      console.log('✅ Mock video service started successfully');
     } catch (error) {
+      console.error('❌ Mock video service failed:', error);
       this.handleError(new Error(`Mock stream failed: ${error.message}`));
       throw error;
     }

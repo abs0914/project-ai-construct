@@ -395,11 +395,11 @@ export class VideoStreamingService {
       this.currentRelayId = streamResult.relayId;
       
       console.log('✅ V380 stream started, connecting to HLS URL:', streamResult.streamUrls.hls);
-      
+
       // Connect to the HLS stream URL
       this.videoElement.src = streamResult.streamUrls.hls;
       this.videoElement.load();
-      
+
       if (this.config.autoplay) {
         await this.videoElement.play();
       }
