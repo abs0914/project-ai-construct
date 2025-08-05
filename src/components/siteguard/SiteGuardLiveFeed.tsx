@@ -1,9 +1,8 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Wifi } from 'lucide-react';
+import { Wifi, Camera as CameraIcon } from 'lucide-react';
 import { CameraFeed } from './CameraFeed';
-import HLSTestPlayer from './HLSTestPlayer';
 import { Camera, VpnRouter } from '@/hooks/useSiteGuardData';
 
 interface SiteGuardLiveFeedProps {
@@ -25,45 +24,51 @@ export const SiteGuardLiveFeed: React.FC<SiteGuardLiveFeedProps> = ({
 }) => {
   return (
     <div className="space-y-6">
-      {/* HLS Test Section */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h3 className="text-sm font-medium text-blue-800 mb-2">🔧 Debug: HLS Streaming Test</h3>
-        <p className="text-xs text-blue-700 mb-4">
-          Test the media server with Big Buck Bunny stream to verify HLS functionality before trying camera streams.
-        </p>
-        <HLSTestPlayer />
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {cameras.map((camera) => (
-          <CameraFeed
-            key={camera.id}
-            camera={camera}
-            isSelected={selectedCamera === camera.id}
-            onSelect={() => onSelectCamera(camera.id)}
-            onToggleRecording={() => onToggleRecording(camera.id)}
-            onRefresh={() => onRefreshCamera?.(camera.id)}
-            onSettings={() => {
-              // Navigate to camera settings - you can implement this later
-              window.location.href = `/siteguard/settings?camera=${camera.id}`;
-            }}
-          />
-        ))}
-      </div>
+      {/* Camera Grid */}
+      {cameras.length > 0 ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {cameras.map((camera) => (
+            <CameraFeed
+              key={camera.id}
+              camera={camera}
+              isSelected={selectedCamera === camera.id}
+              onSelect={() => onSelectCamera(camera.id)}
+              onToggleRecording={() => onToggleRecording(camera.id)}
+              onRefresh={() => onRefreshCamera?.(camera.id)}
+              onSettings={() => {
+                window.location.href = `/siteguard/settings?camera=${camera.id}`;
+              }}
+            />
+          ))}
+        </div>
+      ) : (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <div className="text-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
+                <CameraIcon className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-medium mb-2">No Cameras Configured</h3>
+              <p className="text-muted-foreground mb-4">
+                Get started by adding your first camera or running the setup wizard.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
       
-      {/* Router Status */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Router Network Status</CardTitle>
-          <CardDescription>GL.iNET GL-MT300N Routers with ZeroTier VPN</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-            {routers.filter(router => 
-              router.location === 'Auto-discovered' || 
-              router.location?.includes('Auto-discovered') ||
-              router.vpn_status === 'connected' && router.zerotier_status === 'connected'
-            ).map((router) => (
+      {/* Network Status */}
+      {routers.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Network Status</CardTitle>
+            <CardDescription>Connected routers and VPN status</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+              {routers.filter(router => 
+                router.vpn_status === 'connected' || router.zerotier_status === 'connected'
+              ).map((router) => (
               <div key={router.id} className="flex items-center justify-between p-3 rounded-lg border">
                 <div className="flex items-center space-x-3">
                   <Wifi className="h-5 w-5 text-muted-foreground" />
@@ -96,6 +101,7 @@ export const SiteGuardLiveFeed: React.FC<SiteGuardLiveFeedProps> = ({
           </div>
         </CardContent>
       </Card>
+      )}
     </div>
   );
 };

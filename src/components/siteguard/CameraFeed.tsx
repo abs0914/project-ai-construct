@@ -223,9 +223,9 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({
             </Badge>
           </div>
         </div>
-        {/* Enhanced status information */}
+        {/* Status information */}
         <div className="flex items-center space-x-4 text-xs text-muted-foreground mt-2">
-          {streamStats ? (
+          {streamStats && (
             <>
               <div className="flex items-center space-x-1">
                 <Signal className="h-3 w-3" />
@@ -233,15 +233,6 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({
               </div>
               <div>{streamStats.fps} FPS</div>
               <div>{streamStats.resolution.width}x{streamStats.resolution.height}</div>
-              {streamStats.latency && <div>{streamStats.latency.toFixed(0)}ms</div>}
-            </>
-          ) : (
-            <>
-              <div>State: {connectionState}</div>
-              {retryCount > 0 && <div>Retries: {retryCount}</div>}
-              {lastAttemptTime && (
-                <div>Last: {lastAttemptTime.toLocaleTimeString()}</div>
-              )}
             </>
           )}
         </div>
@@ -270,40 +261,20 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({
                 </div>
               )}
 
-              {/* Enhanced error overlay */}
+              {/* Error overlay */}
               {error && (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/50">
                   <div className="text-white text-center max-w-xs p-4">
                     <Camera className="h-8 w-8 mx-auto mb-2" />
-                    <p className="text-sm font-medium mb-1">{error}</p>
-                    {detailedError && (
-                      <p className="text-xs text-gray-300 mb-3 break-words">{detailedError}</p>
-                    )}
-                    <div className="flex flex-col gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="text-white border-white hover:bg-white hover:text-black"
-                        onClick={handleRefresh}
-                      >
-                        Retry Connection
-                      </Button>
-                      {retryCount > 2 && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-yellow-300 border-yellow-300 hover:bg-yellow-300 hover:text-black"
-                          onClick={() => {
-                            // Reset and try with test stream
-                            setError(null);
-                            setDetailedError(null);
-                            console.log('Consider using test stream for debugging');
-                          }}
-                        >
-                          Debug Mode
-                        </Button>
-                      )}
-                    </div>
+                    <p className="text-sm font-medium mb-3">Connection Failed</p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-white border-white hover:bg-white hover:text-black"
+                      onClick={handleRefresh}
+                    >
+                      Retry Connection
+                    </Button>
                   </div>
                 </div>
               )}
