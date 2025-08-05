@@ -28,6 +28,7 @@ import {
   Zap
 } from 'lucide-react';
 import { v380Service, V380Camera } from '@/lib/services/v380-service';
+import { supabase } from '@/integrations/supabase/client';
 
 interface V380RemoteTestProps {
   onStreamStarted?: (cameraId: string, streamUrls: any) => void;
@@ -81,40 +82,37 @@ export const V380RemoteTest: React.FC<V380RemoteTestProps> = ({
 
   const loadNetworkResources = async () => {
     try {
-      // Load real router data from network discovery
-      const response = await fetch('/api/network-discovery', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'get_routers' })
+      // Load real router data from network discovery edge function
+      const { data: routerData, error: routerError } = await supabase.functions.invoke('network-discovery', {
+        body: { action: 'get_routers' }
       });
       
-      if (response.ok) {
-        const data = await response.json();
+      if (!routerError && routerData?.success) {
         // Transform discovered routers to match expected format
-        const routers = data.routers?.map(router => ({
+        const routers = routerData.routers?.map(router => ({
           id: router.id || router.name,
           name: router.name || router.model,
           location: router.location || 'Unknown',
-          zerotierIp: router.zerotier_ip || router.ip_address
+          zerotierIp: router.zerotier_ip_address || router.ip_address
         })) || [];
         
         setAvailableRouters(routers);
+        console.log('Loaded routers:', routers);
       } else {
-        // Fallback to empty array if discovery fails
+        console.error('Router loading error:', routerError);
         setAvailableRouters([]);
       }
 
-      // Load ZeroTier networks
-      const ztResponse = await fetch('/api/zerotier-management', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'list_networks' })
+      // Load ZeroTier networks from edge function
+      const { data: ztData, error: ztError } = await supabase.functions.invoke('zerotier-management', {
+        body: { action: 'list_networks' }
       });
       
-      if (ztResponse.ok) {
-        const ztData = await ztResponse.json();
+      if (!ztError && ztData?.success) {
         setAvailableNetworks(ztData.networks || []);
+        console.log('Loaded ZeroTier networks:', ztData.networks);
       } else {
+        console.error('ZeroTier loading error:', ztError);
         setAvailableNetworks([]);
       }
     } catch (error) {
