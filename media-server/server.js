@@ -9,6 +9,10 @@ const fs = require('fs');
 const path = require('path');
 const config = require('./config');
 
+// Import V380 services
+const V380CaptureService = require('./v380-capture-service');
+const V380StreamRelay = require('./v380-stream-relay');
+
 // Ensure media directories exist
 const mediaDir = path.resolve(config.storage.mediaRoot);
 const recordingsDir = path.resolve(config.storage.recordingsPath);
@@ -68,6 +72,10 @@ app.use(express.json());
 const activeStreams = new Map();
 const streamHealth = new Map();
 const streamRetries = new Map();
+
+// Initialize V380 services
+const v380CaptureService = new V380CaptureService();
+const v380StreamRelay = new V380StreamRelay();
 
 // Media server setup
 const nms = new NodeMediaServer(nmsConfig);
@@ -441,6 +449,173 @@ function startRTSPToRTMP(rtspUrl, rtmpUrl, username, password, quality = 'medium
   return ffmpegProcess;
 }
 
+// V380 API Endpoints
+app.post('/api/v380/capture/start', async (req, res) => {
+  const { cameraId, inputSource, options } = req.body;
+
+  try {
+    log.info(`Starting V380 capture for camera ${cameraId}`);
+
+    await v380CaptureService.startCapture(cameraId, {
+      inputSource,
+      ...options
+    });
+
+    const status = v380CaptureService.getCaptureStatus(cameraId);
+
+    res.json({
+      success: true,
+      message: `V380 capture started for camera ${cameraId}`,
+      status
+    });
+
+  } catch (error) {
+    log.error(`Failed to start V380 capture for camera ${cameraId}: ${error.message}`);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+app.post('/api/v380/capture/stop', async (req, res) => {
+  const { cameraId } = req.body;
+
+  try {
+    log.info(`Stopping V380 capture for camera ${cameraId}`);
+
+    await v380CaptureService.stopCapture(cameraId);
+
+    res.json({
+      success: true,
+      message: `V380 capture stopped for camera ${cameraId}`
+    });
+
+  } catch (error) {
+    log.error(`Failed to stop V380 capture for camera ${cameraId}: ${error.message}`);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+app.get('/api/v380/capture/status/:cameraId?', (req, res) => {
+  const { cameraId } = req.params;
+
+  try {
+    if (cameraId) {
+      const status = v380CaptureService.getCaptureStatus(cameraId);
+      if (!status) {
+        return res.status(404).json({
+          success: false,
+          error: `No capture found for camera ${cameraId}`
+        });
+      }
+      res.json({ success: true, status });
+    } else {
+      const allCaptures = v380CaptureService.getActiveCaptures();
+      res.json({ success: true, captures: allCaptures });
+    }
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+app.post('/api/v380/relay/start', async (req, res) => {
+  const { cameraId, inputSource, outputFormat } = req.body;
+
+  try {
+    log.info(`Starting V380 relay for camera ${cameraId}: ${inputSource} -> ${outputFormat}`);
+
+    const relayId = await v380StreamRelay.startRelay(cameraId, inputSource, outputFormat);
+    const streamUrls = v380StreamRelay.getStreamUrls(cameraId);
+
+    res.json({
+      success: true,
+      message: `V380 relay started for camera ${cameraId}`,
+      relayId,
+      streamUrls
+    });
+
+  } catch (error) {
+    log.error(`Failed to start V380 relay for camera ${cameraId}: ${error.message}`);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+app.post('/api/v380/relay/stop', async (req, res) => {
+  const { relayId } = req.body;
+
+  try {
+    log.info(`Stopping V380 relay ${relayId}`);
+
+    await v380StreamRelay.stopRelay(relayId);
+
+    res.json({
+      success: true,
+      message: `V380 relay ${relayId} stopped`
+    });
+
+  } catch (error) {
+    log.error(`Failed to stop V380 relay ${relayId}: ${error.message}`);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+app.get('/api/v380/relay/status/:relayId?', (req, res) => {
+  const { relayId } = req.params;
+
+  try {
+    const status = v380StreamRelay.getRelayStatus(relayId);
+
+    if (relayId && !status) {
+      return res.status(404).json({
+        success: false,
+        error: `Relay ${relayId} not found`
+      });
+    }
+
+    res.json({ success: true, status });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+app.get('/api/v380/streams/:cameraId', (req, res) => {
+  const { cameraId } = req.params;
+
+  try {
+    const streamUrls = v380StreamRelay.getStreamUrls(cameraId);
+
+    res.json({
+      success: true,
+      cameraId,
+      streamUrls
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // WebRTC signaling server
 const wss = new WebSocket.Server({ port: 8001 });
 
@@ -537,29 +712,66 @@ setInterval(() => {
   }
 }, 2000);
 
+// Start V380 services
+async function startV380Services() {
+  try {
+    if (config.cameras.v380.pcSoftware.enabled) {
+      log.info('Starting V380 services...');
+
+      await v380CaptureService.start();
+      await v380StreamRelay.start();
+
+      log.info('✅ V380 services started successfully');
+    } else {
+      log.info('V380 services disabled in configuration');
+    }
+  } catch (error) {
+    log.error(`❌ Failed to start V380 services: ${error.message}`);
+  }
+}
+
 // Start servers
 nms.run();
-server.listen(config.ports.api, () => {
+server.listen(config.ports.api, async () => {
   log.info(`Media Server API running on port ${config.ports.api}`);
   log.info(`RTMP Server running on port ${config.ports.rtmp}`);
   log.info(`HTTP Media Server running on port ${config.ports.http}`);
   log.info(`WebRTC Signaling Server running on port ${config.ports.webrtc}`);
   log.info('Video streaming infrastructure ready');
+
+  // Start V380 services after main server is ready
+  await startV380Services();
 });
 
 // Graceful shutdown
-process.on('SIGINT', () => {
+process.on('SIGINT', async () => {
   console.log('Shutting down media server...');
-  
-  // Stop all active streams
-  for (const [streamKey, stream] of activeStreams.entries()) {
-    if (stream.process) {
-      stream.process.kill('SIGTERM');
+
+  try {
+    // Stop V380 services
+    if (config.cameras.v380.pcSoftware.enabled) {
+      log.info('Stopping V380 services...');
+      await v380CaptureService.stop();
+      await v380StreamRelay.stop();
+      log.info('✅ V380 services stopped');
     }
+
+    // Stop all active streams
+    for (const [streamKey, stream] of activeStreams.entries()) {
+      if (stream.process) {
+        stream.process.kill('SIGTERM');
+      }
+    }
+
+    nms.stop();
+    server.close();
+    wss.close();
+
+    log.info('✅ Media server shutdown complete');
+    process.exit(0);
+
+  } catch (error) {
+    log.error(`❌ Error during shutdown: ${error.message}`);
+    process.exit(1);
   }
-  
-  nms.stop();
-  server.close();
-  wss.close();
-  process.exit(0);
 });

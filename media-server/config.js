@@ -5,7 +5,8 @@ const config = {
     rtmp: 1935,
     http: 8000,
     api: 3001,
-    webrtc: 8001
+    webrtc: 8001,
+    rtsp: 554
   },
 
   // FFmpeg configuration
@@ -79,6 +80,27 @@ const config = {
         nightVision: true,
         motionDetection: true,
         audioSupport: true
+      },
+      // V380 PC software integration settings
+      pcSoftware: {
+        enabled: true,
+        capturePort: 8554,
+        relayPort: 8555,
+        streamFormat: 'rtsp',
+        maxConnections: 10,
+        bufferSize: 1024 * 1024, // 1MB buffer
+        reconnectInterval: 5000,
+        heartbeatInterval: 30000
+      },
+      // V380 protocol specific settings
+      protocol: {
+        version: '1.0',
+        encryption: false,
+        compression: true,
+        audioEnabled: true,
+        videoQuality: 'high', // low, medium, high
+        frameRate: 25,
+        resolution: '1920x1080'
       }
     },
 
