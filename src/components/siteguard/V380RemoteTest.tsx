@@ -27,7 +27,7 @@ import {
   Clock,
   Zap
 } from 'lucide-react';
-import { v380Service } from '@/lib/services/v380-service';
+import { v380Service, V380Camera } from '@/lib/services/v380-service';
 
 interface V380RemoteTestProps {
   onStreamStarted?: (cameraId: string, streamUrls: any) => void;
@@ -299,10 +299,49 @@ export const V380RemoteTest: React.FC<V380RemoteTestProps> = ({
     try {
       setError(null);
       
+      // Create a proper V380Camera object from test config
+      const v380Camera: V380Camera = {
+        id: camera.id,
+        name: camera.name,
+        ip: camera.zerotierIp || camera.directIp || camera.localIp,
+        port: camera.port,
+        model: 'V380 Pro',
+        firmware: '1.0.0',
+        credentials: camera.credentials,
+        streamSettings: {
+          rtspPath: camera.streamSettings?.rtspPath || '/stream1',
+          quality: (camera.streamSettings?.quality as 'low' | 'medium' | 'high') || 'high',
+          resolution: camera.streamSettings?.resolution || '1920x1080',
+          frameRate: camera.streamSettings?.frameRate || 25,
+          bitrate: 2000,
+          audioEnabled: camera.streamSettings?.audioEnabled || true
+        },
+        protocolSettings: {
+          version: '1.0',
+          encryption: false,
+          compression: true,
+          heartbeatInterval: 30000,
+          reconnectInterval: 5000,
+          maxRetries: 3
+        },
+        capabilities: {
+          ptz: false,
+          nightVision: true,
+          motionDetection: true,
+          audioSupport: true,
+          recordingSupport: true
+        },
+        status: {
+          enabled: true,
+          lastSeen: new Date().toISOString(),
+          connectionStatus: 'connected'
+        }
+      };
+
       // Use the test results to start actual streaming
       const result = await v380Service.startV380Stream(
         camera.id,
-        camera,
+        v380Camera,
         'hls'
       );
       
@@ -465,12 +504,12 @@ export const V380RemoteTest: React.FC<V380RemoteTestProps> = ({
                   <Card key={testName} className="p-4">
                     <div className="flex items-center justify-between">
                       <span className="font-medium">{testName}</span>
-                      {getStatusBadge(result.status)}
+                      {getStatusBadge((result as any)?.status)}
                     </div>
-                    {result.status === 'pass' && (
+                    {(result as any)?.status === 'pass' && (
                       <div className="text-sm text-gray-600 mt-2">
                         <Clock className="w-3 h-3 inline mr-1" />
-                        {result.timestamp?.toLocaleTimeString()}
+                        {(result as any)?.timestamp?.toLocaleTimeString()}
                       </div>
                     )}
                   </Card>
@@ -484,12 +523,12 @@ export const V380RemoteTest: React.FC<V380RemoteTestProps> = ({
                   <Card key={testName} className="p-4">
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-medium">{testName}</span>
-                      {getStatusBadge(result.status)}
+                      {getStatusBadge((result as any)?.status)}
                     </div>
                     
-                    {result.status === 'pass' && result.result && (
+                    {(result as any)?.status === 'pass' && (result as any)?.result && (
                       <div className="text-sm space-y-1">
-                        {Object.entries(result.result).map(([key, value]) => (
+                        {Object.entries((result as any).result).map(([key, value]) => (
                           <div key={key} className="flex justify-between">
                             <span className="text-gray-600">{key}:</span>
                             <span className="font-mono">{String(value)}</span>
@@ -498,9 +537,9 @@ export const V380RemoteTest: React.FC<V380RemoteTestProps> = ({
                       </div>
                     )}
                     
-                    {result.status === 'fail' && (
+                    {(result as any)?.status === 'fail' && (
                       <div className="text-sm text-red-600">
-                        {result.error}
+                        {(result as any)?.error}
                       </div>
                     )}
                   </Card>
