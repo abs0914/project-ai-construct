@@ -63,6 +63,7 @@ export const CameraFeed: React.FC<CameraFeedProps> = ({
 
       const streamingService = new VideoStreamingService({
         cameraId: camera.id,
+        cameraName: camera.name, // Pass camera name for V380 detection
         rtspUrl,
         username: camera.username || 'admin',
         password: 'password', // In real implementation, this would be securely stored

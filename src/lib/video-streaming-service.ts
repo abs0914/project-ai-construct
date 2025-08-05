@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 export interface StreamingConfig {
   cameraId: string;
+  cameraName?: string; // Add camera name for V380 detection
   rtspUrl: string;
   username?: string;
   password?: string;
@@ -51,16 +52,18 @@ export class VideoStreamingService {
     this.videoElement = videoElement;
 
     try {
-      // Add debugging to see camera ID
+      // Add debugging to see camera details
       console.log('🔍 Camera ID being checked:', this.config.cameraId);
+      console.log('🔍 Camera name being checked:', this.config.cameraName);
       
       // For V380 cameras, use demo streams directly without media server
-      // Check for V380 patterns (case insensitive)
+      // Check for V380 patterns (case insensitive) in both ID and name
       const isV380Camera = this.config.cameraId.toLowerCase().includes('v380') || 
-                          this.config.cameraId.toLowerCase().includes('remote-v380');
+                          this.config.cameraId.toLowerCase().includes('remote-v380') ||
+                          (this.config.cameraName && this.config.cameraName.toLowerCase().includes('v380'));
       
       if (isV380Camera) {
-        console.log('✅ V380 camera detected, using demo HLS stream');
+        console.log('✅ V380 camera detected via', this.config.cameraName ? 'name' : 'ID', ', using demo HLS stream');
         await this.connectWithDemoStream();
         return;
       } else {
