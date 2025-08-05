@@ -4,9 +4,13 @@
 
 This guide describes the implementation of V380 PC software integration for capturing and relaying video streams from V380 cameras. The solution provides a comprehensive approach to interface with V380 PC software and convert streams to standard formats (RTSP/HLS/WebRTC).
 
+**🌐 REMOTE NETWORK SUPPORT**: This implementation fully supports cameras outside the local network using GL.iNET routers and ZeroTier VPN, providing seamless access to remote V380 cameras with intelligent routing and automatic failover.
+
 ## Architecture
 
 ### Components
+
+#### Core V380 Services
 
 1. **V380 Capture Service** (`media-server/v380-capture-service.js`)
    - Interfaces with V380 PC software
@@ -26,13 +30,41 @@ This guide describes the implementation of V380 PC software integration for capt
    - Stores protocol settings
    - Provides configuration validation
 
-4. **V380 Frontend Service** (`src/lib/services/v380-service.ts`)
+#### Remote Network Services
+
+4. **V380 Remote Manager** (`media-server/v380-remote-manager.js`)
+   - Manages V380 cameras across remote networks
+   - Integrates with GL.iNET routers and ZeroTier VPN
+   - Handles network discovery and connection management
+   - Provides unified interface for local and remote cameras
+
+5. **V380 Network Discovery** (`media-server/v380-network-discovery.js`)
+   - Discovers V380 cameras on local and ZeroTier networks
+   - Scans IP ranges and responds to V380 discovery broadcasts
+   - Identifies camera capabilities and connection methods
+   - Supports both UDP broadcast and targeted scanning
+
+6. **V380 VPN Router** (`media-server/v380-vpn-router.js`)
+   - Intelligent routing for V380 streams through VPN tunnels
+   - Finds optimal connection paths (direct, ZeroTier, router forwarding)
+   - Tests route viability and maintains routing tables
+   - Provides connection health monitoring
+
+7. **V380 Connection Fallback** (`media-server/v380-connection-fallback.js`)
+   - Automatic failover to backup routes when primary fails
+   - Monitors connection health and triggers fallbacks
+   - Attempts to restore primary routes when available
+   - Provides exponential backoff retry mechanisms
+
+#### Frontend Integration
+
+8. **V380 Frontend Service** (`src/lib/services/v380-service.ts`)
    - TypeScript service for frontend integration
    - Provides API wrapper functions
    - Handles stream workflow management
    - Offers connection testing
 
-5. **V380 Setup Component** (`src/components/siteguard/V380Setup.tsx`)
+9. **V380 Setup Component** (`src/components/siteguard/V380Setup.tsx`)
    - React component for V380 configuration
    - User interface for stream management
    - Real-time status monitoring

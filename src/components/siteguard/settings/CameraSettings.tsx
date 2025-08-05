@@ -7,11 +7,12 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Camera, Plus, Trash2, Settings, Monitor } from 'lucide-react';
+import { Camera, Plus, Trash2, Settings, Monitor, Globe } from 'lucide-react';
 import { useSiteGuardData } from '@/hooks/useSiteGuardData';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { V380Setup } from '../V380Setup';
+import { V380RemoteTest } from '../V380RemoteTest';
 
 interface CameraSettingsProps {
   onSettingsChange: () => void;
@@ -122,9 +123,10 @@ export const CameraSettings: React.FC<CameraSettingsProps> = ({ onSettingsChange
   return (
     <div className="space-y-6">
       <Tabs defaultValue="onvif" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="onvif">ONVIF Cameras</TabsTrigger>
-          <TabsTrigger value="v380">V380 Cameras</TabsTrigger>
+          <TabsTrigger value="v380">V380 Setup</TabsTrigger>
+          <TabsTrigger value="v380-remote">V380 Remote Test</TabsTrigger>
         </TabsList>
 
         <TabsContent value="onvif" className="space-y-6">
@@ -295,12 +297,47 @@ export const CameraSettings: React.FC<CameraSettingsProps> = ({ onSettingsChange
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <V380Setup onComplete={() => {
+              <V380Setup onStreamStarted={(cameraId, streamUrls) => {
                 refetch.cameras();
                 onSettingsChange();
                 toast({
-                  title: "V380 Setup Complete",
-                  description: "V380 camera has been configured and added to your system",
+                  title: "V380 Stream Started",
+                  description: `Camera ${cameraId} is now streaming successfully`,
+                });
+              }} onStreamStopped={(cameraId) => {
+                toast({
+                  title: "V380 Stream Stopped",
+                  description: `Camera ${cameraId} stream has been stopped`,
+                });
+              }} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="v380-remote" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Globe className="h-5 w-5" />
+                V380 Remote Camera Test
+              </CardTitle>
+              <CardDescription>
+                Test V380 cameras across different networks using GL.iNET routers and ZeroTier VPN.
+                Perfect for testing cameras when you're not on the same network.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <V380RemoteTest onStreamStarted={(cameraId, streamUrls) => {
+                refetch.cameras();
+                onSettingsChange();
+                toast({
+                  title: "Remote V380 Stream Started",
+                  description: `Remote camera ${cameraId} is now streaming via ${streamUrls.connectionType || 'VPN'}`,
+                });
+              }} onStreamStopped={(cameraId) => {
+                toast({
+                  title: "Remote V380 Stream Stopped",
+                  description: `Remote camera ${cameraId} stream has been stopped`,
                 });
               }} />
             </CardContent>
