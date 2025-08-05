@@ -1,1 +1,13 @@
 project_id = "aooppgijnjxbsylvwukx"
+
+[functions.network-discovery]
+verify_jwt = false
+
+[functions.zerotier-management]
+verify_jwt = false
+
+[functions.v380-capture]
+verify_jwt = false
+
+[functions.v380-relay]
+verify_jwt = false

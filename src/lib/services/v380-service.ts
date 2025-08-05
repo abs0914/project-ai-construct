@@ -1,5 +1,4 @@
-import { apiClient } from '../api-client';
-import { API_CONFIG } from '../api-config';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface V380Camera {
   id: string;
@@ -74,10 +73,8 @@ export interface V380StreamUrls {
  * V380 Service for managing V380 cameras and streams
  */
 export class V380Service {
-  private baseUrl: string;
-
   constructor() {
-    this.baseUrl = API_CONFIG.mediaServer;
+    // Using Supabase edge functions instead of external API
   }
 
   /**
@@ -85,13 +82,19 @@ export class V380Service {
    */
   async startCapture(cameraId: string, inputSource: string, options?: any): Promise<V380CaptureStatus> {
     try {
-      const response = await apiClient.post(`${this.baseUrl}/api/v380/capture/start`, {
-        cameraId,
-        inputSource,
-        options
+      const { data, error } = await supabase.functions.invoke('v380-capture', {
+        body: {
+          action: 'start',
+          cameraId,
+          inputSource,
+          options
+        }
       });
 
-      return (response as any).status;
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Failed to start capture');
+
+      return data.status;
     } catch (error) {
       console.error('Failed to start V380 capture:', error);
       throw new Error(`Failed to start V380 capture: ${error}`);
@@ -103,9 +106,15 @@ export class V380Service {
    */
   async stopCapture(cameraId: string): Promise<void> {
     try {
-      await apiClient.post(`${this.baseUrl}/api/v380/capture/stop`, {
-        cameraId
+      const { data, error } = await supabase.functions.invoke('v380-capture', {
+        body: {
+          action: 'stop',
+          cameraId
+        }
       });
+
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Failed to stop capture');
     } catch (error) {
       console.error('Failed to stop V380 capture:', error);
       throw new Error(`Failed to stop V380 capture: ${error}`);
@@ -117,13 +126,17 @@ export class V380Service {
    */
   async getCaptureStatus(cameraId?: string): Promise<V380CaptureStatus | Record<string, V380CaptureStatus>> {
     try {
-      const url = cameraId 
-        ? `${this.baseUrl}/api/v380/capture/status/${cameraId}`
-        : `${this.baseUrl}/api/v380/capture/status`;
+      const { data, error } = await supabase.functions.invoke('v380-capture', {
+        body: {
+          action: 'status',
+          cameraId
+        }
+      });
+
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Failed to get capture status');
       
-      const response = await apiClient.get(url);
-      
-      return cameraId ? (response as any).status : (response as any).captures;
+      return cameraId ? data.status : data.captures;
     } catch (error) {
       console.error('Failed to get V380 capture status:', error);
       throw new Error(`Failed to get V380 capture status: ${error}`);
@@ -138,15 +151,21 @@ export class V380Service {
     streamUrls: V380StreamUrls;
   }> {
     try {
-      const response = await apiClient.post(`${this.baseUrl}/api/v380/relay/start`, {
-        cameraId,
-        inputSource,
-        outputFormat
+      const { data, error } = await supabase.functions.invoke('v380-relay', {
+        body: {
+          action: 'start',
+          cameraId,
+          inputSource,
+          outputFormat
+        }
       });
 
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Failed to start relay');
+
       return {
-        relayId: (response as any).relayId,
-        streamUrls: (response as any).streamUrls
+        relayId: data.relayId,
+        streamUrls: data.streamUrls
       };
     } catch (error) {
       console.error('Failed to start V380 relay:', error);
@@ -159,9 +178,15 @@ export class V380Service {
    */
   async stopRelay(relayId: string): Promise<void> {
     try {
-      await apiClient.post(`${this.baseUrl}/api/v380/relay/stop`, {
-        relayId
+      const { data, error } = await supabase.functions.invoke('v380-relay', {
+        body: {
+          action: 'stop',
+          relayId
+        }
       });
+
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Failed to stop relay');
     } catch (error) {
       console.error('Failed to stop V380 relay:', error);
       throw new Error(`Failed to stop V380 relay: ${error}`);
@@ -173,13 +198,17 @@ export class V380Service {
    */
   async getRelayStatus(relayId?: string): Promise<V380RelayStatus> {
     try {
-      const url = relayId 
-        ? `${this.baseUrl}/api/v380/relay/status/${relayId}`
-        : `${this.baseUrl}/api/v380/relay/status`;
+      const { data, error } = await supabase.functions.invoke('v380-relay', {
+        body: {
+          action: 'status',
+          relayId
+        }
+      });
+
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Failed to get relay status');
       
-      const response = await apiClient.get(url);
-      
-      return (response as any).status;
+      return data.status;
     } catch (error) {
       console.error('Failed to get V380 relay status:', error);
       throw new Error(`Failed to get V380 relay status: ${error}`);
@@ -191,9 +220,17 @@ export class V380Service {
    */
   async getStreamUrls(cameraId: string): Promise<V380StreamUrls> {
     try {
-      const response = await apiClient.get(`${this.baseUrl}/api/v380/streams/${cameraId}`);
+      const { data, error } = await supabase.functions.invoke('v380-relay', {
+        body: {
+          action: 'streams',
+          cameraId
+        }
+      });
+
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || 'Failed to get stream URLs');
       
-      return (response as any).streamUrls;
+      return data.streamUrls;
     } catch (error) {
       console.error('Failed to get V380 stream URLs:', error);
       throw new Error(`Failed to get V380 stream URLs: ${error}`);

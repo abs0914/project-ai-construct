@@ -47,6 +47,9 @@ serve(async (req) => {
       case 'restart_zerotier':
         return await handleRestartZeroTier(supabaseClient, router_id);
       
+      case 'list_networks':
+        return await handleListNetworks(supabaseClient);
+      
       default:
         throw new Error(`Unknown action: ${action}`);
     }
@@ -307,6 +310,26 @@ async function checkZeroTierNodeStatus(nodeId: string, networkId: string): Promi
 function generateNodeId(): string {
   // Generate a random 10-character hex string for ZeroTier node ID
   return Array.from({ length: 10 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+}
+
+async function handleListNetworks(supabaseClient: any) {
+  console.log('Listing ZeroTier networks from database');
+  
+  const { data: networks, error } = await supabaseClient
+    .from('zerotier_networks')
+    .select('*')
+    .eq('is_active', true)
+    .order('network_name');
+
+  if (error) throw error;
+
+  return new Response(
+    JSON.stringify({ 
+      success: true, 
+      networks: networks || []
+    }),
+    { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+  );
 }
 
 async function assignZeroTierIP(networkId: string): Promise<string> {
