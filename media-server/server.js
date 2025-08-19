@@ -219,14 +219,15 @@ app.get('/api/streams/:streamKey/verify-hls', async (req, res) => {
 
 app.post('/api/streams/:cameraId/start', async (req, res) => {
   const { cameraId } = req.params;
-  const { rtspUrl, username, password } = req.body;
+  const { rtspUrl, username, password, externalAccess } = req.body;
 
   try {
     log.info(`Starting stream for camera ${cameraId} with RTSP: ${rtspUrl?.replace(/\/\/.*:.*@/, '//***:***@')}`);
-    
+    log.info(`External access mode: ${externalAccess ? 'enabled' : 'disabled'}`);
+
     const streamKey = `camera_${cameraId}`;
     const rtmpUrl = `rtmp://localhost:1935/live/${streamKey}`;
-    
+
     // Validate RTSP URL
     if (!rtspUrl) {
       throw new Error('RTSP URL is required');

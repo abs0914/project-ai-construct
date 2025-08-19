@@ -11,10 +11,11 @@ class V380VPNRouter extends EventEmitter {
     super();
     
     this.config = {
-      networkServerUrl: options.networkServerUrl || 'http://localhost:3003',
+      networkServerUrl: options.networkServerUrl || process.env.NETWORK_SERVER_URL || 'http://localhost:3003',
       routingTimeout: options.routingTimeout || 10000,
       healthCheckInterval: options.healthCheckInterval || 30000,
       maxRetries: options.maxRetries || 3,
+      externalAccessEnabled: options.externalAccessEnabled || true,
       ...options
     };
     
@@ -161,14 +162,15 @@ class V380VPNRouter extends EventEmitter {
     const routes = [];
     
     // Direct connection (highest priority)
-    if (cameraConfig.directIp) {
+    if (cameraConfig.directIp || (cameraConfig.ip && cameraConfig.networkSettings?.directAccess)) {
       routes.push({
         type: 'direct',
-        ip: cameraConfig.directIp,
+        ip: cameraConfig.directIp || cameraConfig.ip,
         port: cameraConfig.port || 554,
         priority: 1,
         latency: 0,
-        reliability: 0.95
+        reliability: 0.95,
+        external: cameraConfig.networkSettings?.externalAccess || false
       });
     }
     

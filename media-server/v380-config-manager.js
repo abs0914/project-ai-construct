@@ -137,6 +137,60 @@ class V380ConfigManager extends EventEmitter {
       }
     });
     
+
+    // Add your specific V380 camera configuration
+    this.addCamera('85725752', {
+      name: 'V380 External Camera',
+      ip: '172.30.195.39',
+      port: 554,
+      model: 'V380 Pro',
+      firmware: '1.0.0',
+      credentials: {
+        username: '85725752',
+        password: 'Ztatic@PV0sites'
+      },
+      streamSettings: {
+        rtspPath: '/live/ch00_0',
+        quality: 'high',
+        resolution: '1920x1080',
+        frameRate: 25,
+        bitrate: 2000,
+        audioEnabled: true
+      },
+      protocolSettings: {
+        version: '1.0',
+        encryption: false,
+        compression: true,
+        heartbeatInterval: 30000,
+        reconnectInterval: 5000,
+        maxRetries: 3
+      },
+      capabilities: {
+        ptz: false,
+        nightVision: true,
+        motionDetection: true,
+        audioSupport: true,
+        recordingSupport: true
+      },
+      networkSettings: {
+        routerId: 'glinet-external-001',
+        localIp: '172.30.195.39',
+        zerotierIp: null, // Will be assigned by ZeroTier
+        networkId: null,  // Will be set when ZeroTier network is configured
+        externalAccess: true,
+        portForwarding: {
+          enabled: true,
+          externalPort: 554,
+          internalPort: 554
+        }
+      },
+      status: {
+        enabled: true,
+        lastSeen: null,
+        connectionStatus: 'disconnected'
+      }
+    });
+
     this.saveConfiguration();
   }
 
