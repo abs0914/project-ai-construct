@@ -163,25 +163,14 @@ export class V380Service {
 
       // Try to start stream via the regular media server
       try {
-        // Use camera-specific credentials and RTSP path
-        const credentials = camera.credentials || { username: 'admin', password: 'password' };
-        const rtspPath = camera.streamSettings?.rtspPath || '/stream1';
-
-        // Construct proper RTSP URL for external camera
-        let rtspUrl = inputSource;
-        if (camera.networkSettings?.externalAccess) {
-          // For external cameras, use the configured IP and credentials
-          rtspUrl = `rtsp://${credentials.username}:${credentials.password}@${camera.ip}:${camera.port}${rtspPath}`;
-        }
-
-        console.log(`🔗 Starting V380 stream for camera ${cameraId} with RTSP: ${rtspUrl.replace(/\/\/.*:.*@/, '//***:***@')}`);
+        console.log(`🔗 Starting V380 stream for camera ${cameraId} with fallback to media server`);
 
         const mediaResponse = await apiClient.post(`${this.baseUrl}/streams/${cameraId}/start`, {
-          rtspUrl: rtspUrl,
-          username: credentials.username,
-          password: credentials.password,
+          rtspUrl: inputSource,
+          username: 'admin',
+          password: 'password', 
           cameraId: cameraId,
-          externalAccess: camera.networkSettings?.externalAccess || false
+          externalAccess: false
         });
 
         const relayId = `v380_relay_${cameraId}_${Date.now()}`;
